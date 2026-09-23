@@ -1,73 +1,80 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Таксі Кобеляки</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
-        #map { width: 100%; height: 60vh; }
-        .container { padding: 15px; }
-        .btn { width: 100%; padding: 14px; background: #2ea636; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .address-inputs input { width: 93%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Таксі Кобеляки</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; display: flex; flex-direction: column; }
+    #map { flex: 1; width: 100%; }
+    .controls { padding: 12px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+    input { width: 100%; padding: 10px; margin-bottom: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+    button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; }
+    button:disabled { background: #cccccc; }
+  </style>
 </head>
 <body>
 
-<div id="map"></div>
+  <div id="map"></div>
 
-<div class="container">
-    <div class="address-inputs">
-        <input type="text" id="from" placeholder="Звідки (натисніть на карті)">
-        <input type="text" id="to" placeholder="Куди (натисніть на карті)">
-    </div>
-    <button class="btn" onclick="sendOrder()">Підтвердити замовлення</button>
-</div>
+  <div class="controls">
+    <input type="text" id="from" placeholder="Точка А (Звідки)" readonly>
+    <input type="text" id="to" placeholder="Точка Б (Куди)" readonly>
+    <button id="confirm-btn" onclick="sendData()">Підтвердити замовлення</button>
+  </div>
 
-<script>
+  <script>
     const tg = window.Telegram.WebApp;
+    tg.ready();
     tg.expand();
 
-    // Карта Кобеляків
-    const map = L.map('map').setView([49.1414, 34.2008], 14);
+    const map = L.map('map').setView([49.1453, 34.2040], 14);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    let pointA = null;
-    let pointB = null;
+    let fromMarker = null;
+    let toMarker = null;
 
     map.on('click', function(e) {
-        if (!pointA) {
-            pointA = e.latlng;
-            L.marker(pointA).addTo(map).bindPopup("Звідки").openPopup();
-            document.getElementById('from').value = `${pointA.lat.toFixed(4)}, ${pointA.lng.toFixed(4)}`;
-        } else if (!pointB) {
-            pointB = e.latlng;
-            L.marker(pointB).addTo(map).bindPopup("Куди").openPopup();
-            document.getElementById('to').value = `${pointB.lat.toFixed(4)}, ${pointB.lng.toFixed(4)}`;
-        }
+      const latlng = e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
+
+      if (!fromMarker) {
+        fromMarker = L.marker(e.latlng).addTo(map).bindPopup("Звідки").openPopup();
+        document.getElementById('from').value = latlng;
+      } else if (!toMarker) {
+        toMarker = L.marker(e.latlng).addTo(map).bindPopup("Куди").openPopup();
+        document.getElementById('to').value = latlng;
+      } else {
+        map.removeLayer(fromMarker);
+        map.removeLayer(toMarker);
+        toMarker = null;
+        fromMarker = L.marker(e.latlng).addTo(map).bindPopup("Звідки").openPopup();
+        document.getElementById('from').value = latlng;
+        document.getElementById('to').value = '';
+      }
     });
 
-    function sendOrder() {
-        if (!pointA || !pointB) {
-            alert("Будь ласка, виберіть обидві точки на карті!");
-            return;
-        }
+    function sendData() {
+      const fromVal = document.getElementById('from').value;
+      const toVal = document.getElementById('to').value;
 
-        const data = {
-            from: pointA,
-            to: pointB,
-            address_from: document.getElementById('from').value,
-            address_to: document.getElementById('to').value
-        };
+      if (!fromVal || !toVal) {
+        alert("Будь ласка, оберіть обидві точки на карті!");
+        return;
+      }
 
-        tg.sendData(JSON.stringify(data));
+      const payload = {
+        address_from: fromVal,
+        address_to: toVal
+      };
+
+      tg.sendData(JSON.stringify(payload));
     }
-</script>
+  </script>
 </body>
 </html>
