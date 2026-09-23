@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Таксі Кобеляки</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
+        #map { width: 100%; height: 60vh; }
+        .container { padding: 15px; }
+        .btn { width: 100%; padding: 14px; background: #2ea636; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .address-inputs input { width: 93%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="container">
+    <div class="address-inputs">
+        <input type="text" id="from" placeholder="Звідки (натисніть на карті)">
+        <input type="text" id="to" placeholder="Куди (натисніть на карті)">
+    </div>
+    <button class="btn" onclick="sendOrder()">Підтвердити замовлення</button>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // Карта Кобеляків
+    const map = L.map('map').setView([49.1414, 34.2008], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+    }).addTo(map);
+
+    let pointA = null;
+    let pointB = null;
+
+    map.on('click', function(e) {
+        if (!pointA) {
+            pointA = e.latlng;
+            L.marker(pointA).addTo(map).bindPopup("Звідки").openPopup();
+            document.getElementById('from').value = `${pointA.lat.toFixed(4)}, ${pointA.lng.toFixed(4)}`;
+        } else if (!pointB) {
+            pointB = e.latlng;
+            L.marker(pointB).addTo(map).bindPopup("Куди").openPopup();
+            document.getElementById('to').value = `${pointB.lat.toFixed(4)}, ${pointB.lng.toFixed(4)}`;
+        }
+    });
+
+    function sendOrder() {
+        if (!pointA || !pointB) {
+            alert("Будь ласка, виберіть обидві точки на карті!");
+            return;
+        }
+
+        const data = {
+            from: pointA,
+            to: pointB,
+            address_from: document.getElementById('from').value,
+            address_to: document.getElementById('to').value
+        };
+
+        tg.sendData(JSON.stringify(data));
+    }
+</script>
+</body>
+</html>
