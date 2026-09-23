@@ -12,7 +12,6 @@
     #map { flex: 1; width: 100%; }
     .controls { padding: 12px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
     input { width: 100%; padding: 10px; margin-bottom: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
-    button { width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -22,7 +21,6 @@
   <div class="controls">
     <input type="text" id="from" placeholder="Точка А (Звідки)" readonly>
     <input type="text" id="to" placeholder="Точка Б (Куди)" readonly>
-    <button id="confirm-btn">Підтвердити замовлення</button>
   </div>
 
   <script>
@@ -31,6 +29,8 @@
     if (tg) {
       tg.ready();
       tg.expand();
+      tg.MainButton.setText("ПІДТВЕРДИТИ ЗАМОВЛЕННЯ");
+      tg.MainButton.show();
     }
 
     const map = L.map('map').setView([49.1453, 34.2040], 14);
@@ -61,7 +61,7 @@
       }
     });
 
-    document.getElementById('confirm-btn').addEventListener('click', function() {
+    function sendData() {
       const fromVal = document.getElementById('from').value;
       const toVal = document.getElementById('to').value;
 
@@ -70,22 +70,19 @@
         return;
       }
 
-      if (!tg) {
-        alert("Помилка: Telegram WebApp SDK не завантажився!");
-        return;
-      }
-
       const payload = JSON.stringify({
         address_from: fromVal,
         address_to: toVal
       });
 
-      try {
+      if (tg) {
         tg.sendData(payload);
-      } catch (err) {
-        alert("Помилка відправки: " + err.message);
       }
-    });
+    }
+
+    if (tg) {
+      tg.onEvent('mainButtonClicked', sendData);
+    }
   </script>
 </body>
 </html>
