@@ -1,113 +1,74 @@
-import asyncio
-import json
 import os
+import json
+import logging
 from aiogram import Bot, Dispatcher, F, types
+from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, Message
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
 
+# Налаштування логування
+logging.basicConfig(level=logging.INFO)
+
+# Отримання токена бота з змінних середовища Railway
 TOKEN = os.getenv("BOT_TOKEN")
-DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID")  # ID вашої групи водіїв
+
+if not TOKEN:
+    raise ValueError("Помилка: BOT_TOKEN не знайдено в змінних середовища!")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Тимчасове сховище номерів телефонів користувачів
-user_phones = {}
+# Посилання на ваш розміщений на GitHub Pages веб-додаток (з версією ?v=100 для оновлення кешу)
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=100"
 
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    contact_keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Поділитися номером телефону", request_contact=True)],
-            [KeyboardButton(text="🚗 Замовити таксі", web_app=WebAppInfo(url="https://makcimshapka-stack.github.io/taxi-app/?v=8"))]
-        ],
-        resize_keyboard=True
+async def cmd_start(message: Message):
+    # Створюємо кнопку для відкриття міні-додатка (Mini App)
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🚖 Замовити таксі", 
+                    web_app=WebAppInfo(url=WEB_APP_URL)
+                )
+            ]
+        ]
     )
-    await message.answer(
-        "Вітаємо у службі таксі Кобеляки!\nБудь ласка, спочатку поділіться вашим номером телефону для зв'язку, а потім натисніть «Замовити таксі»:",
-        reply_markup=contact_keyboard
+    
+    welcome_text = (
+        f"Вітаю, {message.from_user.first_name}! 👋\n\n"
+        "Це офіційний бот служби таксі в Кобеляках.\n"
+        "Натисніть кнопку нижче, щоб відкрити мапу та обрати маршрут:"
     )
+    
+    await message.answer(welcome_text, reply_markup=keyboard)
 
-@dp.message(F.contact)
-async def contact_handler(message: types.Message):
-    if message.contact:
-        user_phones[message.from_user.id] = message.contact.phone_number
-        await message.answer(
-            "✅ Дякуємо! Ваш номер збережено. Тепер ви можете натиснути «Замовити таксі».", 
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=[[KeyboardButton(text="🚗 Замовити таксі", web_app=WebAppInfo(url="https://makcimshapka-stack.github.io/taxi-app/?v=8"))]],
-                resize_keyboard=True
-            )
-        )
-
-# Обробка даних із веб-додатка (карта, адреси)
+# Обробка даних, які надсилаються з Web App при натисканні «Замовити таксі»
 @dp.message(F.web_app_data)
-async def web_app_data_handler(message: types.Message):
+async def handle_web_app_data(message: Message):
     try:
         data = json.loads(message.web_app_data.data)
         
         if data.get("action") == "new_order":
-            from_addr = data.get("address_from", "Не вказано")
-            to_addr = data.get("address_to", "Не вказано")
-            passenger_name = message.from_user.full_name
-            username = message.from_user.username
-            passenger_username = f"@{username}" if username else "немає"
-            phone = user_phones.get(message.from_user.id, "Не вказано")
+            address_from = data.get("address_from", "Не вказано")
+            address_to = data.get("address_to", "Не вказано")
             
-            # 1. Відправляємо підтвердження пасажиру
-            car_info = "Volkswagen T4, сірий, держ. номер ВІ1234АВ"
-            driver_phone = "+380991234567"
+            response_text = (
+                "✅ **Ваше замовлення прийнято в роботу!**\n\n"
+                f"📍 **Звідки:** {address_from}\n"
+                f"🏁 **Куди:** {address_to}\n\n"
+                "Очікуйте, пошук вільного автомобіля..."
+            )
             
-            client_text = (
-                f"✅ **Замовлення прийнято!**\n\n"
-                f"📍 Звідки: {from_addr}\n"
-                f"🏁 Куди: {to_addr}\n\n"
-                f"🚗 **До вас їде:** {car_info}\n"
-                f"📞 **Телефон водія:** {driver_phone}"
-            )
-            await message.answer(client_text, parse_mode="Markdown")
-
-            # 2. Формуємо клавіатуру для групи водіїв
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="✅ Взяти замовлення", callback_data="accept_order"),
-                    InlineKeyboardButton(text="❌ Скасувати", callback_data="cancel_order")
-                ]
-            ])
-
-            driver_text = (
-                f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
-                f"👤 Пасажир: {passenger_name} ({passenger_username})\n"
-                f"📞 Телефон: `{phone}`\n"
-                f"📍 Звідки: {from_addr}\n"
-                f"🏁 Куди: {to_addr}"
-            )
-
-            # Надсилаємо замовлення у групу водіїв
-            target_chat = DRIVER_CHAT_ID if DRIVER_CHAT_ID else message.chat.id
-            await bot.send_message(int(target_chat), driver_text, reply_markup=kb, parse_mode="Markdown")
-
+            await message.answer(response_text, parse_mode="Markdown")
+            
     except Exception as e:
-        await message.answer("✅ Замовлення передано водіям!")
-
-# Обробка натискання кнопки водіями
-@dp.callback_query(F.data.in_(["accept_order", "cancel_order"]))
-async def callback_handler(callback: types.CallbackQuery):
-    driver_name = callback.from_user.full_name
-    if callback.data == "accept_order":
-        new_text = callback.message.text + f"\n\n🟢 **Статус:** Взяв водій: {driver_name}"
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f"✅ Виконує {driver_name}", callback_data="taken")]
-        ])
-        await callback.message.edit_text(new_text, reply_markup=kb, parse_mode="Markdown")
-        await callback.answer("Ви успішно взяли замовлення!")
-    elif callback.data == "cancel_order":
-        new_text = callback.message.text + f"\n\n🔴 **Статус:** Замовлення скасовано ({driver_name})"
-        await callback.message.edit_text(new_text, parse_mode="Markdown")
-        await callback.answer("Замовлення скасовано.")
+        logging.error(f"Помилка обробки даних з WebApp: {e}")
+        await message.answer("⚠️ Сталася помилка при обробці замовлення. Спробуйте ще раз.")
 
 async def main():
+    logging.info("Бот запущено і готовий до роботи...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())
