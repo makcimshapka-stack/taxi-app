@@ -36,22 +36,22 @@
 
     <div class="panel">
         <div>
-            <div class="hint">📍 Рухайте мапу або оберіть швидку точку</div>
+            <div class="hint">📍 Рухайте мапу, щоб поставити мітку на місці посадки</div>
 
             <div class="input-group">
-                <label>📍 Звідки забирати:</label>
-                <input type="text" id="from_address" placeholder="Введіть вулицю" value="Центр (Кобеляки)">
-                <div class="quick-buttons" style="margin-top: 4px;">
+                <div class="quick-buttons" style="margin-bottom: 6px;">
                     <button type="button" class="q-btn" onclick="setFrom('Автостанція')">Автостанція</button>
                     <button type="button" class="q-btn" onclick="setFrom('Лікарня')">Лікарня</button>
                     <button type="button" class="q-btn" onclick="setFrom('Ринок')">Ринок</button>
                     <button type="button" class="q-btn" onclick="setFrom('Вокзал')">Вокзал</button>
                 </div>
+                <label>📍 Звідки забирати:</label>
+                <input type="text" id="from_address" placeholder="Введіть вулицю" value="Центр (Кобеляки)">
             </div>
             
             <div class="input-group">
                 <label>🏁 Куди їдемо (призначення):</label>
-                <input type="text" id="to_address" placeholder="Введіть куди їдемо">
+                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
                 <div class="quick-buttons" style="margin-top: 4px;">
                     <button type="button" class="q-btn" onclick="setTo('АТБ')">АТБ</button>
                     <button type="button" class="q-btn" onclick="setTo('Центр')">Центр</button>
@@ -62,7 +62,7 @@
 
         <div class="btn-group">
             <button type="button" class="action-btn" id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
-            <button type="button" class="action-btn" id="submitBtn" onclick="makeOrder()">Замовити</button>
+            <button type="button" class="action-btn" id="submitBtn" onclick="makeOrder()">Замовити таксі</button>
         </div>
     </div>
 
