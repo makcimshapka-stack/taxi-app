@@ -18,7 +18,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # Посилання на ваш розміщений на GitHub Pages веб-додаток (з версією ?v=100 для оновлення кешу)
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=100"
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=101"
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
