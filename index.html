@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Таксі Кобеляки - Visicom</title>
+  <title>Таксі Кобеляки</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -45,19 +45,17 @@
       tg.expand();
     }
 
-    // Ініціалізація карти з центром у Кобеляках (Visicom)
+    // Центрування на Кобеляках (49.14452, 34.19065)
     const map = L.map('map').setView([49.14452, 34.19065], 14);
 
-    // Підключення шару тайлів Visicom Raster API
-    L.tileLayer('https://tms.visicom.ua/3.0/planet/uk/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://visicom.ua/">Visicom</a>',
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map);
 
     let fromMarker = null;
     let toMarker = null;
 
-    // Вибір точок кліком по мапі
     map.on('click', function(e) {
       const coords = e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
 
