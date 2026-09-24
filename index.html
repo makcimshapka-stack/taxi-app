@@ -26,16 +26,16 @@
     <div id="map"></div>
     <div class="panel">
         <div>
-            <div class="hint" id="instruction">👇 Торкніться поля «Звідки», потім клікніть на мапу</div>
+            <div class="hint" id="instruction">📍 Визначення вашого місця розташування...</div>
             
             <div class="input-group" onclick="setActiveField('from')">
                 <label>📍 Звідки їдемо:</label>
-                <input type="text" id="from_address" class="active-field" readonly placeholder="Натисніть сюди, потім на мапу">
+                <input type="text" id="from_address" class="active-field" readonly placeholder="Визначаємо геолокацію...">
             </div>
             
             <div class="input-group" onclick="setActiveField('to')">
                 <label>🏁 Куди їдемо:</label>
-                <input type="text" id="to_address" readonly placeholder="Натисніть сюди, потім на мапу">
+                <input type="text" id="to_address" readonly placeholder="Натисніть сюди, потім оберіть точку на мапі">
             </div>
         </div>
 
@@ -47,42 +47,59 @@
 
     <script>
         let map, geocoder;
-        let activeField = 'from'; // 'from' або 'to'
+        let activeField = 'from';
         let markerFrom = null;
         let markerTo = null;
         
-        const kobelyaky = { lat: 49.14452, lng: 34.19065 };
+        const defaultLocation = { lat: 49.14452, lng: 34.19065 }; // Кобеляки за замовчуванням
 
         function initMap() {
             geocoder = new google.maps.Geocoder();
-            map = new google.maps.Map(document.getElementById("map"), {
-                center: kobelyaky,
+            map = new google.maps.Map(getElementByIdSafe("map"), {
+                center: defaultLocation,
                 zoom: 15,
                 disableDefaultUI: false,
                 clickableIcons: false
             });
 
-            // Клік по мапі ставитиме маркер для відповідного поля
             map.addListener('click', (event) => {
-                const clickedLocation = event.latLng;
-                setPoint(clickedLocation, activeField);
+                setPoint(event.latLng, activeField);
             });
 
-            // Початкова точка "Звідки" за замовчуванням у центрі
-            setPoint(kobelyaky, 'from');
+            // Автогеолокація пристрою користувача
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLatLng = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        map.setCenter(userLatLng);
+                        setPoint(userLatLng, 'from');
+                    },
+                    () => {
+                        // Якщо доступ заборонено — ставимо центр Кобеляк
+                        setPoint(defaultLocation, 'from');
+                    }
+                );
+            } else {
+                setPoint(defaultLocation, 'from');
+            }
         }
+
+        function getElementIdSafe(id) { return document.getElementById(id); }
 
         function setActiveField(field) {
             activeField = field;
-            document.getElementById('from_address').classList.remove('active-field');
-            document.getElementById('to_address').classList.remove('active-field');
+            getElementIdSafe('from_address').classList.remove('active-field');
+            getElementIdSafe('to_address').classList.remove('active-field');
             
-            const hint = document.getElementById('instruction');
+            const hint = getElementIdSafe('instruction');
             if (field === 'from') {
-                document.getElementById('from_address').classList.add('active-field');
+                getElementIdSafe('from_address').classList.add('active-field');
                 hint.innerText = "👇 Вибрано «Звідки». Клікніть на мапу для зміни.";
             } else {
-                document.getElementById('to_address').classList.add('active-field');
+                getElementIdSafe('to_address').classList.add('active-field');
                 hint.innerText = "👇 Вибрано «Куди». Клікніть на мапу для вибору призначення.";
             }
         }
@@ -92,11 +109,14 @@
                 let addressText = "";
                 
                 if (status === "OK" && results[0]) {
-                    addressText = results[0].formatted_address;
+                    // Шукаємо найбільш точну назву вулиці/будинку
+                    let place = results[0];
+                    addressText = place.formatted_address;
                 } else {
-                    addressText = `Кобеляки (Точка: ${latLng.lat().toFixed(4)}, ${latLng.lng().toFixed(4)})`;
+                    addressText = `Кобеляки (Координати: ${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)})`;
                 }
 
+                // Очищуємо зайве з адреси
                 addressText = addressText.replace(", Україна", "").replace("Україна", "").trim();
 
                 if (fieldId === 'from') {
@@ -107,7 +127,7 @@
                         title: "Звідки",
                         icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
                     });
-                    document.getElementById("from_address").value = addressText;
+                    getElementIdSafe("from_address").value = addressText;
                 } else {
                     if (markerTo) markerTo.setMap(null);
                     markerTo = new google.maps.Marker({
@@ -116,7 +136,7 @@
                         title: "Куди",
                         icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
                     });
-                    document.getElementById("to_address").value = addressText;
+                    getElementIdSafe("to_address").value = addressText;
                 }
             });
         }
@@ -130,11 +150,16 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        document.getElementById("submitBtn").addEventListener("click", () => {
-            const from = document.getElementById("from_address").value || "Центр (Кобеляки)";
-            const to = document.getElementById("to_address").value || "В межах міста";
+        getElementIdSafe("submitBtn").addEventListener("click", () => {
+            const from = getElementIdSafe("from_address").value || "Центр (Кобеляки)";
+            const to = getElementIdSafe("to_address").value || "В межах міста";
 
-            const data = { address_from: from, address_to: to };
+            const data = { 
+                action: "new_order",
+                address_from: from, 
+                address_to: to 
+            };
+            
             tg.sendData(JSON.stringify(data));
             tg.close();
         });
@@ -142,8 +167,8 @@
         function cancelOrder() {
             if (markerFrom) markerFrom.setMap(null);
             if (markerTo) markerTo.setMap(null);
-            document.getElementById("from_address").value = "";
-            document.getElementById("to_address").value = "";
+            getElementIdSafe("from_address").value = "";
+            getElementIdSafe("to_address").value = "";
             setActiveField('from');
             tg.close();
         }
