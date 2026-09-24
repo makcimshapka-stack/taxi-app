@@ -16,16 +16,14 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=108"
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=109"
 
-# Тимчасове сховище номерів телефонів клієнтів (в пам'яті бота)
+# Сховище номерів телефонов клієнтів
 user_phones = {}
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     user_id = message.from_user.id
-    
-    # Якщо телефон ще не збережено, просимо поділитися контактом
     if user_id not in user_phones:
         request_phone_keyboard = ReplyKeyboardMarkup(
             keyboard=[
@@ -36,7 +34,7 @@ async def cmd_start(message: Message):
         )
         await message.answer(
             f"Вітаю, {message.from_user.first_name}! 👋\n\n"
-            "Щоб користуватися службою таксі та для зв'язку з водіями, будь ласка, поділіться своїм номером телефону:",
+            "Для роботи служби таксі та зв'язку з водіями, будь ласка, натисніть кнопку нижче та поділіться номером телефону:",
             reply_markup=request_phone_keyboard
         )
     else:
@@ -46,7 +44,6 @@ async def cmd_start(message: Message):
 async def handle_contact(message: Message):
     if message.contact:
         user_phones[message.from_user.id] = message.contact.phone_number
-        # Прибираємо клавіатуру запиту номера і показуємо кнопку замовлення
         await message.answer("✅ Дякуємо! Номер успішно збережено.", reply_markup=types.ReplyKeyboardRemove())
         await send_main_menu(message)
 
@@ -55,13 +52,13 @@ async def send_main_menu(message: Message):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚖 Замовити таксі (Відкрити карту)", 
+                    text="🚖 Замовити таксі на мапі", 
                     web_app=WebAppInfo(url=WEB_APP_URL)
                 )
             ]
         ]
     )
-    await message.answer("Натисніть кнопку нижче, щоб обрати маршрут на мапі Кобеляк:", reply_markup=keyboard)
+    await message.answer("Натисніть кнопку нижче, щоб відкрити інтерактивну карту Кобеляк:", reply_markup=keyboard)
 
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
@@ -71,6 +68,9 @@ async def handle_web_app_data(message: Message):
         if data.get("action") == "new_order":
             address_from = data.get("address_from", "Центр (Кобеляки)")
             address_to = data.get("address_to", "Не вказано")
+            lat = data.get("lat", 49.1445)
+            lng = data.get("lng", 34.1906)
+            
             user_name = message.from_user.first_name
             user_id = message.from_user.id
             phone = user_phones.get(user_id, "Не вказано")
@@ -84,19 +84,18 @@ async def handle_web_app_data(message: Message):
                 parse_mode="Markdown"
             )
             
-            # Кнопка для водіїв
+            # Кнопка для водіїв (ховаємо lat, lng, phone та user_id в callback_data)
             driver_keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="✅ Прийняти замовлення", 
-                            callback_data=f"accept_{user_id}"
+                            callback_data=f"acc_{user_id}_{lat}_{lng}"
                         )
                     ]
                 ]
             )
             
-            # Повідомлення для групи водіїв (містить адресу і телефон)
             driver_text = (
                 "🚨 **НОВЕ ЗАМОВЛЕННЯ!** 🚨\n\n"
                 f"📍 **Звідки:** {address_from}\n"
@@ -112,19 +111,20 @@ async def handle_web_app_data(message: Message):
                     reply_markup=driver_keyboard, 
                     parse_mode="Markdown"
                 )
-            else:
-                logging.warning("⚠️ DRIVER_CHAT_ID не налаштовано!")
             
     except Exception as e:
-        logging.error(f"Помилка обробки WebApp даних: {e}")
+        logging.error(f"Помилка обробки WebApp: {e}")
         await message.answer("⚠️ Сталася помилка при замовленні.")
 
-# Обробка натискання кнопки водієм
-@dp.callback_query(F.data.startswith("accept_"))
+@dp.callback_query(F.data.startswith("acc_"))
 async def accept_order(callback: CallbackQuery):
+    parts = callback.data.split("_")
+    client_id = int(parts[1])
+    lat = parts[2]
+    lng = parts[3]
+    
     driver_name = callback.from_user.first_name
     driver_id = callback.from_user.id
-    client_id = int(callback.data.split("_")[1])
     phone = user_phones.get(client_id, "Не вказано")
     
     try:
@@ -135,40 +135,38 @@ async def accept_order(callback: CallbackQuery):
             parse_mode="Markdown"
         )
         
-        # Посилання на навігацію для водія (універсальні координати центру Кобеляк або назва)
-        map_link = f"https://maps.google.com/?q={urllib_quote(address_from) if 'address_from' in locals() else 'Kobelyaky'}"
-        
-        # Кнопка навігації для водія в особисті або просто в тексті
+        # Навігація для водія прямо до точок клієнта
+        nav_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
         nav_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="🗺 Відкрити маршрут у Google Maps", 
-                        url=f"https://www.google.com/maps/search/?api=1&query=Kobelyaky"
+                        text="🗺 Навігація до клієнта (Google Maps)", 
+                        url=nav_url
                     )
                 ]
             ]
         )
         
-        # Відправляємо водію контакти клієнта та навігацію в особисті повідомлення (якщо він писав боту) або дублюємо в чат
+        # Надсилаємо водію в ЛС інформацію і навігацію
         try:
             await bot.send_message(
                 chat_id=driver_id,
-                text=f"📌 **Маршрут замовлення:**\n📍 Звідки: клієнт чекає\n📞 Телефон клієнта: `{phone}`",
+                text=f"📌 **Маршрут прийнято!**\n📞 Телефон клієнта: `{phone}`",
                 reply_markup=nav_keyboard,
                 parse_mode="Markdown"
             )
         except:
-            pass # Якщо водій не запускав бота в ЛС, нічого страшного
+            pass
         
-        # Оновлюємо повідомлення в групі водіїв
-        new_text = callback.message.text + f"\n\n✅ **Статус:** Прийняв(ла) — **{driver_name}**\n📞 Тел клієнта: `{phone}`"
+        # Оновлюємо повідомлення в групі
+        new_text = callback.message.text + f"\n\n✅ **Статус:** Прийняв(ла) — **{driver_name}**\n📞 Тел: `{phone}`"
         await callback.message.edit_text(text=new_text, reply_markup=None, parse_mode="Markdown")
         await callback.answer("Ви успішно прийняли замовлення!")
         
     except Exception as e:
-        logging.error(f"Помилка при прийнятті замовлення: {e}")
-        await callback.answer("⚠️ Помилка обробки замовлення.", show_alert=True)
+        logging.error(f"Помилка прийняття: {e}")
+        await callback.answer("⚠️ Помилка обробки.", show_alert=True)
 
 async def main():
     logging.info("Бот запущено...")
