@@ -137,16 +137,13 @@
                 return;
             }
 
-            const orderText = `🚖 Замовлення таксі:\n📍 Звідки: ${from}\n🏁 Куди: ${to}`;
-            const botUsername = "TaxiKobelyakyBot"; 
-            const url = `https://t.me/${botUsername}?text=${encodeURIComponent(orderText)}`;
-            
-            if (tg.openTelegramLink) {
-                tg.openTelegramLink(url);
-            } else {
-                window.open(url, '_blank');
-            }
-            
+            const data = {
+                address_from: from,
+                address_to: to
+            };
+
+            // Передаємо дані у бот та закриваємо WebApp
+            tg.sendData(JSON.stringify(data));
             tg.close();
         });
 
