@@ -16,7 +16,8 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=111"
+# УВАГА: Створіть на GitHub новий файл map.html або закиньте код туди ж
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/map.html"
 
 user_phones = {}
 
@@ -51,13 +52,13 @@ async def send_main_menu(message: Message):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚖 Замовити таксі на мапі", 
+                    text="🗺 Відкрити карту та замовити", 
                     web_app=WebAppInfo(url=WEB_APP_URL)
                 )
             ]
         ]
     )
-    await message.answer("Натисніть кнопку нижче, щоб відкрити карту:", reply_markup=keyboard)
+    await message.answer("Натисніть кнопку нижче, щоб відкрити інтерактивну мапу:", reply_markup=keyboard)
 
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
@@ -74,7 +75,6 @@ async def handle_web_app_data(message: Message):
             user_id = message.from_user.id
             phone = user_phones.get(user_id, "Не вказано")
             
-            # Підтвердження клієнту
             await message.answer(
                 "✅ **Ваше замовлення прийнято в пошук!**\n\n"
                 f"📍 **Звідки:** {address_from}\n"
@@ -83,7 +83,6 @@ async def handle_web_app_data(message: Message):
                 parse_mode="Markdown"
             )
             
-            # Кнопка для водіїв у загальний чат
             driver_keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -126,14 +125,13 @@ async def accept_order(callback: CallbackQuery):
     phone = user_phones.get(client_id, "Не вказано")
     
     try:
-        # Сповіщаємо клієнта
         await bot.send_message(
             chat_id=client_id,
             text=f"🚗 **Замовлення прийнято!** Водій **{driver_name}** виїжджає до вас.",
             parse_mode="Markdown"
         )
         
-        # Навігація для водія прямо у чат водіїв
+        # Кнопка навігації летить прямо в чат водіїв
         nav_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
         nav_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -152,7 +150,6 @@ async def accept_order(callback: CallbackQuery):
             f"📞 **Тел. клієнта:** `{phone}`"
         )
         
-        # Оновлюємо повідомлення в чаті водіїв
         await callback.message.edit_text(
             text=new_text, 
             reply_markup=nav_keyboard, 
