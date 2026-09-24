@@ -5,20 +5,22 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, Message, CallbackQuery
 from aiogram.filters import Command
 
+# Налаштування логування
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("BOT_TOKEN")
-DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID")
+DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID")  # ID чату водіїв (наприклад, -100xxxxxxxxxx)
 
 if not TOKEN:
-    raise ValueError("Помилка: BOT_TOKEN не знайдено!")
+    raise ValueError("Помилка: BOT_TOKEN не знайдено у змінних середовища!")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# УВАГА: Створіть на GitHub новий файл map.html або закиньте код туди ж
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/taximap.html"
+# Посилання на вашу оновлену мапу на GitHub
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/mapview.html"
 
+# Словник для збереження телефонів користувачів
 user_phones = {}
 
 @dp.message(Command("start"))
@@ -34,7 +36,7 @@ async def cmd_start(message: Message):
         )
         await message.answer(
             f"Вітаю, {message.from_user.first_name}! 👋\n\n"
-            "Для роботи служби таксі, будь ласка, поділіться номером телефону:",
+            "Для виклику таксі, будь ласка, поділіться номером телефону:",
             reply_markup=request_phone_keyboard
         )
     else:
@@ -58,37 +60,38 @@ async def send_main_menu(message: Message):
             ]
         ]
     )
-    await message.answer("Натисніть кнопку нижче, щоб відкрити інтерактивну мапу:", reply_markup=keyboard)
+    await message.answer("Натисніть кнопку нижче, щоб відкрити мапу та вказати маршрут:", reply_markup=keyboard)
 
+# Головний обробник даних від WebApp (коли користувач натискає «Замовити таксі»)
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
     try:
         data = json.loads(message.web_app_data.data)
         
         if data.get("action") == "new_order":
-            address_from = data.get("address_from", "Центр (Кобеляки)")
+            address_from = data.get("address_from", "Не вказано")
             address_to = data.get("address_to", "Не вказано")
-            lat = data.get("lat", 49.1445)
-            lng = data.get("lng", 34.1906)
             
             user_name = message.from_user.first_name
             user_id = message.from_user.id
             phone = user_phones.get(user_id, "Не вказано")
             
+            # Повідомлення клієнту
             await message.answer(
                 "✅ **Ваше замовлення прийнято в пошук!**\n\n"
                 f"📍 **Звідки:** {address_from}\n"
                 f"🏁 **Куди:** {address_to}\n\n"
-                "Очікуємо водія...",
+                "Очікуємо на водія...",
                 parse_mode="Markdown"
             )
             
+            # Кнопка для водіїв щоб прийняти замовлення
             driver_keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="✅ Прийняти замовлення", 
-                            callback_data=f"acc_{user_id}_{lat}_{lng}"
+                            callback_data=f"acc_{user_id}"
                         )
                     ]
                 ]
@@ -102,46 +105,35 @@ async def handle_web_app_data(message: Message):
                 f"📞 **Телефон:** `{phone}`"
             )
             
+            # Надсилаємо у чат водіїв
             if DRIVER_CHAT_ID:
                 await bot.send_message(
-                    chat_id=DRIVER_CHAT_ID, 
+                    chat_id=int(DRIVER_CHAT_ID), 
                     text=driver_text, 
                     reply_markup=driver_keyboard, 
                     parse_mode="Markdown"
                 )
+            else:
+                logging.warning("DRIVER_CHAT_ID не задано в середовищі Railway!")
             
     except Exception as e:
-        logging.error(f"Помилка обробки WebApp: {e}")
-        await message.answer("⚠️ Сталася помилка при замовленні.")
+        logging.error(f"Помилка обробки WebApp даних: {e}")
+        await message.answer("⚠️ Сталася помилка при оформленні замовлення.")
 
+# Обробка натискання водієм кнопки «Прийняти замовлення»
 @dp.callback_query(F.data.startswith("acc_"))
 async def accept_order(callback: CallbackQuery):
     parts = callback.data.split("_")
     client_id = int(parts[1])
-    lat = parts[2]
-    lng = parts[3]
-    
     driver_name = callback.from_user.first_name
     phone = user_phones.get(client_id, "Не вказано")
     
     try:
+        # Повідомлення клієнту про те, що водій їде
         await bot.send_message(
             chat_id=client_id,
             text=f"🚗 **Замовлення прийнято!** Водій **{driver_name}** виїжджає до вас.",
             parse_mode="Markdown"
-        )
-        
-        # Кнопка навігації летить прямо в чат водіїв
-        nav_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
-        nav_keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="🗺 Навігація до клієнта (Google Maps)", 
-                        url=nav_url
-                    )
-                ]
-            ]
         )
         
         new_text = (
@@ -150,19 +142,19 @@ async def accept_order(callback: CallbackQuery):
             f"📞 **Тел. клієнта:** `{phone}`"
         )
         
+        # Оновлюємо текст у чаті водіїв
         await callback.message.edit_text(
             text=new_text, 
-            reply_markup=nav_keyboard, 
             parse_mode="Markdown"
         )
         await callback.answer("Ви успішно прийняли замовлення!")
         
     except Exception as e:
-        logging.error(f"Помилка прийняття: {e}")
-        await callback.answer("⚠️ Помилка обробки.", show_alert=True)
+        logging.error(f"Помилка при прийнятті замовлення: {e}")
+        await callback.answer("⚠️ Помилка обробки замовлення.", show_alert=True)
 
 async def main():
-    logging.info("Бот запущено...")
+    logging.info("Бот запущено та готовий до роботи...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
