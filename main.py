@@ -18,7 +18,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # Посилання на вашу оновлену мапу на GitHub
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/mapview.html"
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/map2.html"
 
 # Словник для збереження телефонів користувачів
 user_phones = {}
