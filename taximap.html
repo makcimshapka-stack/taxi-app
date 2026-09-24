@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вибір маршруту на мапі</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
+        #map-container { width: 100%; height: 45vh; position: relative; }
+        #map { width: 100%; height: 100%; }
+        .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 38px; pointer-events: none; z-index: 1000; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3)); }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 55vh; background: #fff; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
+        .input-group { margin-bottom: 10px; }
+        label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 4px; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; cursor: pointer; transition: all 0.2s; }
+        input.active-field { border-color: #007aff; background: #f0f7ff; box-shadow: 0 0 0 3px rgba(0,122,255,0.1); }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        #submitBtn { background: #2ea44f; color: white; }
+        #cancelBtn { background: #d73a49; color: white; }
+        .hint { font-size: 12px; color: #007aff; text-align: center; margin-bottom: 10px; font-weight: bold; background: #eef5ff; padding: 8px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <div id="map-container">
+        <div class="map-pin" id="pinIcon">📍</div>
+        <div id="map"></div>
+    </div>
+
+    <div class="panel">
+        <div>
+            <div class="hint" id="instructionHint">👇 Крок 1: Оберіть точку ЗВІДКИ (рухайте мапу)</div>
+
+            <div class="input-group">
+                <label>📍 Звідки забирати:</label>
+                <input type="text" id="from_address" class="active-field" readonly value="GPS: 49.1445, 34.1906">
+            </div>
+            
+            <div class="input-group">
+                <label>🏁 Куди їдемо (призначення):</label>
+                <input type="text" id="to_address" readonly placeholder="Натисніть сюди, щоб обрати на мапі">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
+            <button id="submitBtn">Замовити таксі</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const map = L.map('map', {zoomControl: false}).setView([49.1445, 34.1906], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let activeMode = 'from'; 
+        let fromLat = 49.1445, fromLng = 34.1906;
+        let toLat = null, toLng = null;
+
+        const fromInput = document.getElementById('from_address');
+        const toInput = document.getElementById('to_address');
+        const hint = document.getElementById('instructionHint');
+
+        fromInput.addEventListener('click', () => {
+            activeMode = 'from';
+            fromInput.classList.add('active-field');
+            toInput.classList.remove('active-field');
+            hint.innerText = "👇 Крок 1: Оберіть точку ЗВІДКИ (рухайте мапу)";
+            if (fromLat && fromLng) map.setView([fromLat, fromLng], map.getZoom());
+        });
+
+        toInput.addEventListener('click', () => {
+            activeMode = 'to';
+            toInput.classList.add('active-field');
+            fromInput.classList.remove('active-field');
+            hint.innerText = "👇 Крок 2: Оберіть точку КУДИ (рухайте мапу)";
+            if (toLat && toLng) {
+                map.setView([toLat, toLng], map.getZoom());
+            } else {
+                map.setView([49.1445, 34.1906], map.getZoom());
+            }
+        });
+
+        map.on('moveend', () => {
+            const center = map.getCenter();
+            if (activeMode === 'from') {
+                fromLat = center.lat;
+                fromLng = center.lng;
+                fromInput.value = `GPS: ${fromLat.toFixed(4)}, ${fromLng.toFixed(4)}`;
+            } else {
+                toLat = center.lat;
+                toLng = center.lng;
+                toInput.value = `GPS: ${toLat.toFixed(4)}, ${toLng.toFixed(4)}`;
+            }
+        });
+
+        document.getElementById("submitBtn").addEventListener("click", () => {
+            if (!toLat || !toLng) {
+                alert("Будь ласка, натисніть на поле 'Куди їдемо' та оберіть пункт призначення на мапі!");
+                toInput.click();
+                return;
+            }
+
+            const data = { 
+                action: "new_order",
+                address_from: fromInput.value, 
+                address_to: toInput.value,
+                lat: fromLat,
+                lng: fromLng,
+                to_lat: toLat,
+                to_lng: toLng
+            };
+            
+            tg.sendData(JSON.stringify(data));
+            tg.close();
+        });
+    </script>
+</body>
+</html>
