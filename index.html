@@ -9,16 +9,15 @@
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
         #map { width: 100%; height: 40vh; border: none; }
         .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh; background: #fff; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 6px; }
-        label { font-size: 12px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
-        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
+        .input-group { margin-bottom: 8px; }
+        label { font-size: 12px; font-weight: bold; color: #444; display: block; margin-bottom: 3px; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 15px; outline: none; background: #fff; }
         input.active-field { border-color: #0366d6; background: #f0f7ff; }
-        .gps-btn { background: #0088cc; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 6px; width: 100%; }
-        .btn-group { display: flex; gap: 8px; margin-top: 4px; }
-        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .btn-group { display: flex; gap: 10px; margin-top: 8px; }
+        button { border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
-        .hint { font-size: 12px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
+        .hint { font-size: 13px; color: #0366d6; text-align: center; margin-bottom: 6px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -28,18 +27,16 @@
 
     <div class="panel">
         <div>
-            <div class="hint" id="instruction">👇 Вкажіть маршрут або натисніть GPS</div>
+            <div class="hint" id="instruction">👇 Введіть вулицю та номер будинку</div>
             
-            <button class="gps-btn" onclick="getGPSLocation()">📍 Визначити мою геолокацію автоматично</button>
-
             <div class="input-group" onclick="setActiveField('from')">
-                <label>📍 Звідки їдемо:</label>
-                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Адреса подачі">
+                <label>📍 Звідки їдемо (вулиця, орієнтир):</label>
+                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Наприклад: вул. Шевченка, 10">
             </div>
             
             <div class="input-group" onclick="setActiveField('to')">
-                <label>🏁 Куди їдемо:</label>
-                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
+                <label>🏁 Куди їдемо (адреса призначення):</label>
+                <input type="text" id="to_address" placeholder="Наприклад: Лікарня / вокзал">
             </div>
         </div>
 
@@ -53,31 +50,6 @@
         let activeField = 'from';
         const tg = window.Telegram.WebApp;
         tg.expand();
-
-        function getGPSLocation() {
-            if (navigator.geolocation) {
-                document.getElementById('instruction').innerText = "⏳ Отримуємо GPS-координати...";
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        // Оновлюємо iframe карти під ваші координати
-                        document.getElementById('map').src = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.01}%2C${lat-0.01}%2C${lng+0.01}%2C${lat+0.01}&layer=mapnik&marker=${lat}%2C${lng}`;
-                        
-                        document.getElementById('from_address').value = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (Кобеляки)`;
-                        document.getElementById('instruction').innerText = "✅ Геолокацію успішно визначено!";
-                    },
-                    (error) => {
-                        alert("Не вдалося отримати геолокацію. Перевірте дозволи в телефоні.");
-                        document.getElementById('instruction').innerText = "👇 Введіть адресу вручну";
-                    },
-                    { timeout: 10000, enableHighAccuracy: true }
-                );
-            } else {
-                alert("Ваш пристрій не підтримує геолокацію.");
-            }
-        }
 
         function setActiveField(field) {
             activeField = field;
@@ -96,7 +68,7 @@
             const to = document.getElementById("to_address").value.trim();
 
             if (!to) {
-                alert("Будь ласка, введіть адресу призначення!");
+                alert("Будь ласка, введіть куди їдемо!");
                 return;
             }
 
