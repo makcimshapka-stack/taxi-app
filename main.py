@@ -1,89 +1,62 @@
 import asyncio
+import json
 import logging
 import sys
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 TOKEN = "8895482400:AAECLb1186EcGMi5laXwO3DYWayckFJ-dIk"
-DRIVERS_CHAT_ID = -1002456789123  # Замініть на ID вашої групи водіїв або свій ID для тестів
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/"
+DRIVERS_CHAT_ID = -1002456789123  # Вкажіть правильний ID групи водіїв або свій ID для тестів
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 bot = Bot(token=TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
-
-# Стани для оформлення замовлення
-class OrderState(StatesGroup):
-    waiting_for_from = State()
-    waiting_for_to = State()
+dp = Dispatcher()
 
 @dp.message(CommandStart())
-async def command_start_handler(message: Message, state: FSMContext):
-    await state.clear()
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🚖 Замовити таксі")]
-        ],
-        resize_keyboard=True
+async def command_start_handler(message: Message):
+    # Перевіряємо, чи є параметри передачі з веб-додатка (запасний варіант)
+    if message.text and message.text.startswith("/start order_"):
+        try:
+            parts = message.text.split("_", 2)
+            if len(parts) == 3:
+                address_from = parts[1].replace("+", " ")
+                address_to = parts[2].replace("+", " ")
+                await process_order_data(message, address_from, address_to)
+                return
+        except Exception:
+            pass
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🗺 Відкрити карту та замовити",
+                    web_app=WebAppInfo(url=WEB_APP_URL)
+                )
+            ]
+        ]
     )
+    
     await message.answer(
         "👋 Вітаємо у службі таксі Кобеляки!\n\n"
-        "Натисніть кнопку нижче, щоб розпочати замовлення:",
+        "Натисніть кнопку нижче, щоб відкрити карту, обрати маршрут і викликати машину:",
         reply_markup=keyboard
     )
 
-@dp.message(F.text == "🚖 Замовити таксі")
-async def start_order(message: Message, state: FSMContext):
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📍 Центр"), KeyboardButton(text="📍 Автостанція")],
-            [KeyboardButton(text="📍 Вокзал"), KeyboardButton(text="📍 Лікарня")]
-        ],
-        resize_keyboard=True
-    )
-    await message.answer("Звідки вас забрати? (Оберіть із меню або введіть свою адресу):", reply_markup=keyboard)
-    await state.set_state(OrderState.waiting_for_from)
-
-@dp.message(OrderState.waiting_for_from)
-async def process_from(message: Message, state: FSMContext):
-    await state.update_data(address_from=message.text)
-    
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏁 АТБ"), KeyboardButton(text="🏁 Центр")],
-            [KeyboardButton(text="🏁 Покровська 50"), KeyboardButton(text="❌ Скасувати")]
-        ],
-        resize_keyboard=True
-    )
-    await message.answer(f"📍 Звідки: <b>{message.text}</b>\n\nКуди їдемо (пункт призначення)?", parse_mode="HTML", reply_markup=keyboard)
-    await state.set_state(OrderState.waiting_for_to)
-
-@dp.message(OrderState.waiting_for_to)
-async def process_to(message: Message, state: FSMContext):
-    if message.text == "❌ Скасувати":
-        await state.clear()
-        await command_start_handler(message, state)
-        return
-
-    data = await state.get_data()
-    address_from = data.get("address_from")
-    address_to = message.text
-
+async def process_order_data(message: Message, address_from: str, address_to: str):
     user_id = message.from_user.id
     user_name = message.from_user.full_name
     user_username = f"@{message.from_user.username}" if message.from_user.username else f"ID: {user_id}"
 
-    # Сповіщення клієнту
+    # Підтвердження клієнту
     await message.answer(
         f"✅ **Ваше замовлення прийняте!**\n\n"
-        f"📍 Звідки: {address_from}\n"
-        f"🏁 Куди: {address_to}\n\n"
+        f"📍 **Звідки:** {address_from}\n"
+        f"🏁 **Куди:** {address_to}\n\n"
         f"⏳ Шукаємо вільного водія...",
-        parse_mode="Markdown",
-        reply_markup=ReplyKeyboardRemove()
+        parse_mode="Markdown"
     )
 
     # Кнопки для водіїв
@@ -97,26 +70,33 @@ async def process_to(message: Message, state: FSMContext):
     )
 
     driver_text = (
-        f"🚨 **НОВЕ ЗАМОВЛЕННЯ!**\n\n"
+        f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!**\n\n"
         f"👤 **Клієнт:** {user_name} ({user_username})\n"
         f"📍 **Звідки:** {address_from}\n"
         f"🏁 **Куди:** {address_to}"
     )
 
-    # Надсилаємо у чат водіїв
-    try:
+    if DRIVERS_CHAT_ID:
         await bot.send_message(
             chat_id=DRIVERS_CHAT_ID,
             text=driver_text,
             reply_markup=drivers_keyboard,
             parse_mode="Markdown"
         )
+
+# Обробник даних із міні-додатка через tg.sendData()
+@dp.message(F.web_app_data)
+async def web_app_order_handler(message: Message):
+    try:
+        data = json.loads(message.web_app_data.data)
+        address_from = data.get("address_from", "Центр")
+        address_to = data.get("address_to", "Не вказано")
+        await process_order_data(message, address_from, address_to)
     except Exception as e:
-        logging.error(f"Помилка відправки водіям: {e}")
+        logging.error(f"Помилка обробки WebApp даних: {e}")
+        await message.answer("Сталася помилка при замовленні. Спробуйте ще раз.")
 
-    await state.clear()
-
-# Обробка кнопок водіїв
+# Обробка натискання кнопок водіями
 @dp.callback_query(F.data.startswith("accept_") | F.data.startswith("reject_"))
 async def driver_action_handler(callback: CallbackQuery):
     action, client_id_str = callback.data.split("_")
