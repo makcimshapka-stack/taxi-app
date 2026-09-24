@@ -9,57 +9,46 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-        #map-container { width: 100%; height: 42vh; position: relative; }
+        #map-container { width: 100%; height: 45vh; position: relative; }
         #map { width: 100%; height: 100%; }
-        .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 32px; pointer-events: none; z-index: 1000; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 58vh; background: #fff; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
-        .input-group { margin-bottom: 6px; }
-        label { font-size: 11px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
-        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
-        .quick-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-        .q-btn { background: #e1ecf4; color: #0366d6; border: none; padding: 5px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: bold; flex: 1; }
-        .gps-btn { background: #d4edda; color: #155724; width: 100%; margin-bottom: 6px; padding: 8px; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
-        .btn-group { display: flex; gap: 8px; margin-top: 6px; }
-        button.action-btn { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 36px; pointer-events: none; z-index: 1000; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 55vh; background: #fff; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
+        .input-group { margin-bottom: 10px; }
+        label { font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; cursor: pointer; transition: all 0.2s; }
+        input.active-field { border-color: #007aff; background: #f0f7ff; box-shadow: 0 0 0 3px rgba(0,122,255,0.1); }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
-        .hint { font-size: 11px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
+        .hint { font-size: 12px; color: #007aff; text-align: center; margin-bottom: 10px; font-weight: bold; background: #eef5ff; padding: 6px; border-radius: 8px; }
     </style>
 </head>
 <body>
 
     <div id="map-container">
-        <div class="map-pin">📍</div>
+        <div class="map-pin" id="pinIcon">📍</div>
         <div id="map"></div>
     </div>
 
     <div class="panel">
         <div>
-            <div class="hint">🗺 Рухайте мапу, щоб встановити мітку</div>
-            
-            <button class="gps-btn" onclick="useMyLocation()">📍 Визначити моє положення (GPS)</button>
-
-            <div class="quick-buttons">
-                <button class="q-btn" onclick="setPreset('Центр (Кобеляки)', 49.1445, 34.1906)">Центр</button>
-                <button class="q-btn" onclick="setPreset('Автостанція', 49.1460, 34.1850)">Автостанція</button>
-                <button class="q-btn" onclick="setPreset('Лікарня', 49.1410, 34.2000)">Лікарня</button>
-                <button class="q-btn" onclick="setPreset('Вокзал', 49.1320, 34.1780)">Вокзал</button>
-            </div>
+            <div class="hint" id="instructionHint">👇 Обираєте: Звідки їдемо (рухайте мапу)</div>
 
             <div class="input-group">
                 <label>📍 Звідки забирати:</label>
-                <input type="text" id="from_address" value="GPS: 49.1445, 34.1906 (Кобеляки)" placeholder="Точка на мапі">
+                <input type="text" id="from_address" class="active-field" readonly value="GPS: 49.1445, 34.1906">
             </div>
             
             <div class="input-group">
                 <label>🏁 Куди їдемо (призначення):</label>
-                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
+                <input type="text" id="to_address" readonly placeholder="Натисніть сюди, щоб обрати на мапі">
             </div>
         </div>
 
         <div class="btn-group">
-            <button id="cancelBtn" class="action-btn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
-            <button id="submitBtn" class="action-btn">Замовити таксі</button>
+            <button id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
+            <button id="submitBtn">Замовити таксі</button>
         </div>
     </div>
 
@@ -74,56 +63,68 @@
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        let currentLat = 49.1445;
-        let currentLng = 34.1906;
+        let activeMode = 'from'; // 'from' або 'to'
 
-        // Подія спрацьовує ТОДІ, коли користувач пересунув і зупинив карту
-        map.on('moveend', () => {
-            const center = map.getCenter();
-            currentLat = center.lat;
-            currentLng = center.lng;
-            document.getElementById('from_address').value = `GPS: ${currentLat.toFixed(4)}, ${currentLng.toFixed(4)} (Кобеляки)`;
+        let fromLat = 49.1445, fromLng = 34.1906;
+        let toLat = null, toLng = null;
+
+        const fromInput = document.getElementById('from_address');
+        const toInput = document.getElementById('to_address');
+        const hint = document.getElementById('instructionHint');
+        const pinIcon = document.getElementById('pinIcon');
+
+        // Кліки для перемикання режимів вибору
+        fromInput.addEventListener('click', () => {
+            activeMode = 'from';
+            fromInput.classList.add('active-field');
+            toInput.classList.remove('active-field');
+            hint.innerText = "👇 Обираєте: Звідки їдемо (рухайте мапу)";
+            pinIcon.style.color = "red";
+            if (fromLat && fromLng) map.setView([fromLat, fromLng], map.getZoom());
         });
 
-        function setPreset(name, lat, lng) {
-            map.setView([lat, lng], 16);
-            document.getElementById('from_address').value = name;
-            currentLat = lat;
-            currentLng = lng;
-        }
-
-        function useMyLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    map.setView([lat, lng], 17);
-                    document.getElementById('from_address').value = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (Кобеляки)`;
-                    currentLat = lat;
-                    currentLng = lng;
-                }, () => {
-                    alert("Не вдалося отримати геолокацію. Увімкніть GPS на телефоні.");
-                });
+        toInput.addEventListener('click', () => {
+            activeMode = 'to';
+            toInput.classList.add('active-field');
+            fromInput.classList.remove('active-field');
+            hint.innerText = "👇 Обираєте: Куди їдемо (рухайте мапу)";
+            pinIcon.style.color = "green";
+            if (toLat && toLng) {
+                map.setView([toLat, toLng], map.getZoom());
             } else {
-                alert("Геолокація не підтримується.");
+                map.setView([49.1445, 34.1906], map.getZoom());
             }
-        }
+        });
+
+        // Рух карти оновлює відповідну точку залежно від активного поля
+        map.on('moveend', () => {
+            const center = map.getCenter();
+            if (activeMode === 'from') {
+                fromLat = center.lat;
+                fromLng = center.lng;
+                fromInput.value = `GPS: ${fromLat.toFixed(4)}, ${fromLng.toFixed(4)}`;
+            } else {
+                toLat = center.lat;
+                toLng = center.lng;
+                toInput.value = `GPS: ${toLat.toFixed(4)}, ${toLng.toFixed(4)}`;
+            }
+        });
 
         document.getElementById("submitBtn").addEventListener("click", () => {
-            const from = document.getElementById("from_address").value.trim() || "Точка на мапі";
-            const to = document.getElementById("to_address").value.trim();
-
-            if (!to) {
-                alert("Будь ласка, введіть пункт призначення!");
+            if (!toLat || !toLng) {
+                alert("Будь ласка, натисніть на поле 'Куди їдемо' та оберіть пункт призначення на мапі!");
+                toInput.click();
                 return;
             }
 
             const data = { 
                 action: "new_order",
-                address_from: from, 
-                address_to: to,
-                lat: currentLat,
-                lng: currentLng
+                address_from: fromInput.value, 
+                address_to: toInput.value,
+                lat: fromLat,
+                lng: fromLng,
+                to_lat: toLat,
+                to_lng: toLng
             };
             
             tg.sendData(JSON.stringify(data));
