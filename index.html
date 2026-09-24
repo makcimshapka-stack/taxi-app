@@ -109,12 +109,17 @@
                 return;
             }
 
-            // Формуємо текст замовлення
-            const orderText = `🚖 Замовлення таксі:\n📍 Звідки: ${fromVal}\n🏁 Куди: ${toVal}`;
+            const orderData = JSON.stringify({
+                address_from: fromVal || "Центр",
+                address_to: toVal
+            });
 
-            // Відкриваємо чат бота з цим текстом автоматично, закриваючи веб-додаток
-            window.open(`https://t.me/TaxiKobelyakyBot?text=${encodeURIComponent(orderText)}`, '_blank');
-            tg.close();
+            if (tg.initDataUnsafe && tg.initDataUnsafe.query_id) {
+                tg.sendData(orderData);
+            } else {
+                // Запасний варіант для обходу обмежень мобільних клієнтів
+                window.location.href = `https://t.me/TaxiKobelyakyBot?start=order_${encodeURIComponent(fromVal)}_${encodeURIComponent(toVal)}`;
+            }
         }
     </script>
 </body>
