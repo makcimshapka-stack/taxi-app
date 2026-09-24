@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Замовлення Таксі - Кобеляки</title>
+    <title>Вибір маршруту - Кобеляки</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-        #map { width: 100%; height: 35vh; border: none; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 65vh; background: #fff; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
+        #map-container { width: 100%; height: 40vh; position: relative; }
+        #map { width: 100%; height: 100%; border: none; }
+        .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 28px; pointer-events: none; z-index: 10; }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh; background: #fff; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
         .input-group { margin-bottom: 6px; }
         label { font-size: 11px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
         input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
@@ -24,28 +26,31 @@
 </head>
 <body>
 
-    <!-- Карта Кобеляк -->
-    <iframe id="map" src="https://www.openstreetmap.org/export/embed.html?bbox=34.175%2C49.135%2C34.215%2C49.155&layer=mapnik&marker=49.14452%2C34.19065"></iframe>
+    <div id="map-container">
+        <div class="map-pin">📍</div>
+        <!-- Інтерактивна карта OpenStreetMap з центом у Кобеляках -->
+        <iframe id="map" src="https://www.openstreetmap.org/export/embed.html?bbox=34.175%2C49.135%2C34.215%2C49.155&layer=mapnik&marker=49.14452%2C34.19065"></iframe>
+    </div>
 
     <div class="panel">
         <div>
-            <div class="hint" id="instruction">👇 Оберіть адресу або введіть вручну</div>
+            <div class="hint" id="instruction">👇 Центруйте карту на точку посадки або оберіть швидку адресу</div>
             
             <div class="quick-buttons">
-                <button class="q-btn" onclick="setQuickAddress('Центр (Автостанція)')">Автостанція</button>
-                <button class="q-btn" onclick="setQuickAddress('Лікарня')">Лікарня</button>
-                <button class="q-btn" onclick="setQuickAddress('Ринкова площа')">Ринок</button>
-                <button class="q-btn" onclick="setQuickAddress('Вокзал')">Вокзал</button>
+                <button class="q-btn" onclick="setQuickAddress('Автостанція Кобеляки', 49.1460, 34.1850)">Автостанція</button>
+                <button class="q-btn" onclick="setQuickAddress('Центральна лікарня', 49.1410, 34.2000)">Лікарня</button>
+                <button class="q-btn" onclick="setQuickAddress('Центральний ринок', 49.1450, 34.1910)">Ринок</button>
+                <button class="q-btn" onclick="setQuickAddress('Залізничний вокзал', 49.1320, 34.1780)">Вокзал</button>
             </div>
 
             <div class="input-group" onclick="setActiveField('from')">
-                <label>📍 Звідки їдемо (вулиця, будинок):</label>
-                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Введіть вулицю подачі">
+                <label>📍 Звідки (точка на карті / вулиця):</label>
+                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Введіть або оберіть на мапі">
             </div>
             
             <div class="input-group" onclick="setActiveField('to')">
-                <label>🏁 Куди їдемо (призначення):</label>
-                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
+                <label>🏁 Куди (пункт призначення):</label>
+                <input type="text" id="to_address" placeholder="Введіть куди їдемо">
             </div>
         </div>
 
@@ -57,6 +62,8 @@
 
     <script>
         let activeField = 'from';
+        let currentLat = 49.1445;
+        let currentLng = 34.1906;
         const tg = window.Telegram.WebApp;
         tg.expand();
 
@@ -72,12 +79,14 @@
             }
         }
 
-        function setQuickAddress(address) {
+        function setQuickAddress(name, lat, lng) {
+            currentLat = lat;
+            currentLng = lng;
             if (activeField === 'from') {
-                document.getElementById('from_address').value = address;
+                document.getElementById('from_address').value = name;
                 setActiveField('to');
             } else {
-                document.getElementById('to_address').value = address;
+                document.getElementById('to_address').value = name;
             }
         }
 
@@ -86,14 +95,16 @@
             const to = document.getElementById("to_address").value.trim();
 
             if (!to) {
-                alert("Будь ласка, введіть куди їдемо!");
+                alert("Будь ласка, введіть пункт призначення!");
                 return;
             }
 
             const data = { 
                 action: "new_order",
                 address_from: from, 
-                address_to: to 
+                address_to: to,
+                lat: currentLat,
+                lng: currentLng
             };
             
             tg.sendData(JSON.stringify(data));
