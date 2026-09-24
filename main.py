@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from aiogram import Bot, Dispatcher, F, types
-from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, Message
+from aiogram.types import WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, Message
 from aiogram.filters import Command
 
 logging.basicConfig(level=logging.INFO)
@@ -16,35 +16,36 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Вставте тут актуальне посилання на ваш сайт із GitHub Pages
+# Посилання на ваш сайт у GitHub Pages
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=106"
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
+    # Створюємо кнопку, яка закріплюється знизу екрана
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
             [
-                InlineKeyboardButton(
-                    text="🚖 Замовити таксі (Карта)", 
+                KeyboardButton(
+                    text="🚗 Замовити таксі", 
                     web_app=WebAppInfo(url=WEB_APP_URL)
                 )
             ]
-        ]
+        ],
+        resize_keyboard=True,
+        is_persistent=True
     )
     
     welcome_text = (
         f"Вітаю, {message.from_user.first_name}! 👋\n\n"
         "Це офіційний бот служби таксі в Кобеляках.\n"
-        "Натисніть кнопку нижче, щоб відкрити карту та оформити замовлення:"
+        "Натисніть кнопку **«🚗 Замовити таксі»** внизу екрана, щоб відкрити карту:"
     )
     
     await message.answer(welcome_text, reply_markup=keyboard)
 
-# Надійний обробник даних від WebApp
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
     try:
-        # Розшифровуємо JSON, який надіслав сайт
         data = json.loads(message.web_app_data.data)
         
         address_from = data.get("address_from", "Не вказано")
@@ -52,7 +53,7 @@ async def handle_web_app_data(message: Message):
         user_name = message.from_user.first_name
         user_id = message.from_user.id
         
-        # 1. Відправляємо підтвердження клієнту в особисті повідомлення
+        # 1. Відправляємо підтвердження клієнту в особисті
         client_text = (
             "✅ **Ваше замовлення прийнято в роботу!**\n\n"
             f"📍 **Звідки:** {address_from}\n"
@@ -61,7 +62,7 @@ async def handle_web_app_data(message: Message):
         )
         await message.answer(client_text, parse_mode="Markdown")
         
-        # 2. Формуємо сповіщення для водіїв
+        # 2. Формуємо сповіщення для водіїв у групу
         driver_text = (
             "🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
             f"📍 **Звідки:** {address_from}\n"
@@ -69,7 +70,6 @@ async def handle_web_app_data(message: Message):
             f"👤 **Клієнт:** {user_name} (ID: {user_id})"
         )
         
-        # Відправляємо в групу водіїв, якщо ID вказано в змінних Railway
         if DRIVER_CHAT_ID:
             await bot.send_message(chat_id=DRIVER_CHAT_ID, text=driver_text, parse_mode="Markdown")
         else:
