@@ -16,12 +16,10 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Посилання на ваш сайт у GitHub Pages
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=106"
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    # Кнопка відкриття веб-додатка знизу екрана
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -50,19 +48,21 @@ async def handle_web_app_data(message: Message):
         
         address_from = data.get("address_from", "Не вказано")
         address_to = data.get("address_to", "Не вказано")
+        phone_number = data.get("phone", "Не вказано")
         user_name = message.from_user.first_name
         user_id = message.from_user.id
         
-        # 1. Відправляємо підтвердження клієнту в особисті
+        # 1. Підтвердження клієнту
         client_text = (
             "✅ **Ваше замовлення прийнято в роботу!**\n\n"
             f"📍 **Звідки:** {address_from}\n"
-            f"🏁 **Куди:** {address_to}\n\n"
+            f"🏁 **Куди:** {address_to}\n"
+            f"📞 **Телефон:** {phone_number}\n\n"
             "⏳ Очікуйте, шукаємо вільне авто..."
         )
         await message.answer(client_text, parse_mode="Markdown")
         
-        # 2. Формуємо інлайн-кнопки для водіїв у групі
+        # 2. Кнопки для водіїв
         driver_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -76,6 +76,7 @@ async def handle_web_app_data(message: Message):
             "🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
             f"📍 **Звідки:** {address_from}\n"
             f"🏁 **Куди:** {address_to}\n"
+            f"📞 **Телефон:** `{phone_number}`\n"
             f"👤 **Клієнт:** {user_name} (ID: {user_id})"
         )
         
@@ -93,7 +94,6 @@ async def handle_web_app_data(message: Message):
         logging.error(f"Помилка обробки даних з WebApp: {e}")
         await message.answer("⚠️ Сталася помилка при замовленні. Спробуйте ще раз.")
 
-# Обробка натискань водіїв на кнопки «Прийняти» або «Відмовитись»
 @dp.callback_query(F.data.startswith("accept_") | F.data.startswith("cancel_"))
 async def handle_driver_action(callback: CallbackQuery):
     action, client_id = callback.data.split("_")
@@ -101,11 +101,9 @@ async def handle_driver_action(callback: CallbackQuery):
     
     if action == "accept":
         new_text = callback.message.text + f"\n\n✅ **Статус:** Замовлення прийняв водій **{driver_name}**"
-        # Видаляємо кнопки, щоб інші водії бачили, що замовлення вже зайняте
         await callback.message.edit_text(new_text, parse_mode="Markdown")
         await callback.answer(f"Ви прийняли замовлення!", show_alert=False)
         
-        # Опційно: можна надіслати сповіщення клієнту, що водій знайшовся
         try:
             await bot.send_message(
                 chat_id=int(client_id), 
