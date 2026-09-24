@@ -18,7 +18,7 @@
         input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
         .quick-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
         .q-btn { background: #e1ecf4; color: #0366d6; border: none; padding: 5px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: bold; flex: 1; }
-        .gps-btn { background: #d4edda; color: #155724; width: 100%; margin-bottom: 6px; padding: 6px; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .gps-btn { background: #d4edda; color: #155724; width: 100%; margin-bottom: 6px; padding: 8px; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
         .btn-group { display: flex; gap: 8px; margin-top: 6px; }
         button.action-btn { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
@@ -35,20 +35,20 @@
 
     <div class="panel">
         <div>
-            <div class="hint">🗺 Рухайте мапу, щоб поставити мітку</div>
+            <div class="hint">🗺 Рухайте мапу, щоб встановити мітку</div>
             
-            <button class="gps-btn" onclick="useMyLocation()">📍 Моя геолокація (GPS)</button>
+            <button class="gps-btn" onclick="useMyLocation()">📍 Визначити моє положення (GPS)</button>
 
             <div class="quick-buttons">
+                <button class="q-btn" onclick="setPreset('Центр (Кобеляки)', 49.1445, 34.1906)">Центр</button>
                 <button class="q-btn" onclick="setPreset('Автостанція', 49.1460, 34.1850)">Автостанція</button>
                 <button class="q-btn" onclick="setPreset('Лікарня', 49.1410, 34.2000)">Лікарня</button>
-                <button class="q-btn" onclick="setPreset('Ринок', 49.1450, 34.1910)">Ринок</button>
                 <button class="q-btn" onclick="setPreset('Вокзал', 49.1320, 34.1780)">Вокзал</button>
             </div>
 
             <div class="input-group">
                 <label>📍 Звідки забирати:</label>
-                <input type="text" id="from_address" value="Точка на мапі" placeholder="Адреса або точка з мапи">
+                <input type="text" id="from_address" value="GPS: 49.1445, 34.1906 (Кобеляки)" placeholder="Точка на мапі">
             </div>
             
             <div class="input-group">
@@ -76,22 +76,16 @@
 
         let currentLat = 49.1445;
         let currentLng = 34.1906;
-        let isPresetSelected = false;
 
-        // Коли користувач рухає карту — змінюємо координати і оновлюємо поле «Звідки»
-        map.on('move', () => {
+        // Подія спрацьовує ТОДІ, коли користувач пересунув і зупинив карту
+        map.on('moveend', () => {
             const center = map.getCenter();
             currentLat = center.lat;
             currentLng = center.lng;
-            
-            if (!isPresetSelected) {
-                document.getElementById('from_address').value = `Точка на мапі (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
-            }
-            isPresetSelected = false;
+            document.getElementById('from_address').value = `GPS: ${currentLat.toFixed(4)}, ${currentLng.toFixed(4)} (Кобеляки)`;
         });
 
         function setPreset(name, lat, lng) {
-            isPresetSelected = true;
             map.setView([lat, lng], 16);
             document.getElementById('from_address').value = name;
             currentLat = lat;
@@ -103,16 +97,15 @@
                 navigator.geolocation.getCurrentPosition(position => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-                    isPresetSelected = true;
                     map.setView([lat, lng], 17);
-                    document.getElementById('from_address').value = "Моя геолокація (GPS)";
+                    document.getElementById('from_address').value = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (Кобеляки)`;
                     currentLat = lat;
                     currentLng = lng;
                 }, () => {
-                    alert("Не вдалося отримати геолокацію. Увімкніть GPS.");
+                    alert("Не вдалося отримати геолокацію. Увімкніть GPS на телефоні.");
                 });
             } else {
-                alert("Геолокація не підтримується вашим пристроєм.");
+                alert("Геолокація не підтримується.");
             }
         }
 
