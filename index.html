@@ -5,37 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Замовлення Таксі - Кобеляки</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDW4v2j7tbpzvEmnzuEmf9lk-z2Lk1ak7s&libraries=places"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-        #map { width: 100%; height: 50vh; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 50vh; background: #fff; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 16px; border-top-right-radius: 16px; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 6px; }
-        label { font-size: 12px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
-        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
+        #map { width: 100%; height: 45vh; border: none; }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 55vh; background: #fff; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 8px; }
+        label { font-size: 12px; font-weight: bold; color: #444; display: block; margin-bottom: 4px; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 15px; outline: none; background: #fff; }
         input.active-field { border-color: #0366d6; background: #f0f7ff; }
-        .btn-group { display: flex; gap: 8px; margin-top: 4px; }
-        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .btn-group { display: flex; gap: 10px; margin-top: 8px; }
+        button { border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
-        .hint { font-size: 12px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
+        .hint { font-size: 13px; color: #0366d6; text-align: center; margin-bottom: 6px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+    <!-- Відкрита карта Кобеляк через OpenStreetMap -->
+    <iframe id="map" src="https://www.openstreetmap.org/export/embed.html?bbox=34.175%2C49.135%2C34.215%2C49.155&layer=mapnik&marker=49.14452%2C34.19065"></iframe>
+
     <div class="panel">
         <div>
-            <div class="hint" id="instruction">👇 Виберіть поле та клікніть на мапу</div>
+            <div class="hint" id="instruction">👇 Введіть маршрут поїздки</div>
             
             <div class="input-group" onclick="setActiveField('from')">
                 <label>📍 Звідки їдемо:</label>
-                <input type="text" id="from_address" class="active-field" readonly placeholder="Натисніть і оберіть на мапі">
+                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Введіть адресу подачі">
             </div>
             
             <div class="input-group" onclick="setActiveField('to')">
                 <label>🏁 Куди їдемо:</label>
-                <input type="text" id="to_address" readonly placeholder="Натисніть і оберіть на мапі">
+                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
             </div>
         </div>
 
@@ -46,104 +47,30 @@
     </div>
 
     <script>
-        let map, geocoder;
         let activeField = 'from';
-        let markerFrom = null;
-        let markerTo = null;
-        
-        const defaultLocation = { lat: 49.14452, lng: 34.19065 }; // Центр Кобеляк
-
-        function initMap() {
-            geocoder = new google.maps.Geocoder();
-            
-            map = new google.maps.Map(document.getElementById("map"), {
-                center: defaultLocation,
-                zoom: 15,
-                disableDefaultUI: false,
-                clickableIcons: false
-            });
-
-            map.addListener('click', (event) => {
-                setPoint(event.latLng, activeField);
-            });
-
-            setPoint(defaultLocation, 'from');
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const userLatLng = {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude
-                        };
-                        map.setCenter(userLatLng);
-                        setPoint(userLatLng, 'from');
-                    },
-                    (error) => { console.log("Геолокація недоступна"); },
-                    { timeout: 4000 }
-                );
-            }
-        }
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
         function setActiveField(field) {
             activeField = field;
             document.getElementById('from_address').classList.remove('active-field');
             document.getElementById('to_address').classList.remove('active-field');
             
-            const hint = document.getElementById('instruction');
             if (field === 'from') {
                 document.getElementById('from_address').classList.add('active-field');
-                hint.innerText = "👇 Вибрано «Звідки». Клікніть на мапу для зміни.";
             } else {
                 document.getElementById('to_address').classList.add('active-field');
-                hint.innerText = "👇 Вибрано «Куди». Клікніть на мапу для вибору призначення.";
             }
         }
 
-        function setPoint(latLng, fieldId) {
-            geocoder.geocode({ location: latLng, language: 'uk' }, (results, status) => {
-                let addressText = "";
-                
-                if (status === "OK" && results && results[0]) {
-                    addressText = results[0].formatted_address;
-                } else {
-                    let latVal = (typeof latLng.lat === 'function') ? latLng.lat() : latLng.lat;
-                    let lngVal = (typeof latLng.lng === 'function') ? latLng.lng() : latLng.lng;
-                    addressText = `Кобеляки (${latVal.toFixed(4)}, ${lngVal.toFixed(4)})`;
-                }
-
-                addressText = addressText.replace(", Україна", "").replace("Україна", "").trim();
-
-                if (fieldId === 'from') {
-                    if (markerFrom) markerFrom.setMap(null);
-                    markerFrom = new google.maps.Marker({
-                        position: latLng,
-                        map: map,
-                        title: "Звідки",
-                        icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-                    });
-                    document.getElementById("from_address").value = addressText;
-                } else {
-                    if (markerTo) markerTo.setMap(null);
-                    markerTo = new google.maps.Marker({
-                        position: latLng,
-                        map: map,
-                        title: "Куди",
-                        icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-                    });
-                    document.getElementById("to_address").value = addressText;
-                }
-            });
-        }
-
-        window.onload = initMap;
-
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
         document.getElementById("submitBtn").addEventListener("click", () => {
-            const from = document.getElementById("from_address").value || "Центр (Кобеляки)";
-            const to = document.getElementById("to_address").value || "В межах міста";
+            const from = document.getElementById("from_address").value.trim() || "Центр (Кобеляки)";
+            const to = document.getElementById("to_address").value.trim();
+
+            if (!to) {
+                alert("Будь ласка, введіть адресу призначення!");
+                return;
+            }
 
             const data = { 
                 action: "new_order",
