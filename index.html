@@ -7,11 +7,15 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQgPWg1y8w7Ec3rP37jpVo6vFXg6pFUJ0&libraries=places"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
-        #map { height: 60vh; width: 100%; }
-        .panel { padding: 15px; background: #fff; height: 40vh; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
-        button { background: #2ea44f; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; }
+        #map { height: 55vh; width: 100%; }
+        .panel { padding: 15px; background: #fff; height: 45vh; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 16px; border-top-right-radius: 16px; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .btn-group { display: flex; gap: 10px; }
+        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        #submitBtn { background: #2ea44f; color: white; }
+        #cancelBtn { background: #d73a49; color: white; }
+        #geoBtn { background: #0366d6; color: white; margin-bottom: 8px; font-size: 14px; padding: 8px; }
     </style>
 </head>
 <body>
@@ -19,17 +23,22 @@
     <div id="map"></div>
     <div class="panel">
         <div>
-            <input type="text" id="from_address" placeholder="Звідки (адреса або точка на мапі)">
+            <button id="geoBtn" onclick="geolocate()">📍 Визначити моє положення</button>
+            <input type="text" id="from_address" placeholder="Звідки (клікніть на мапу або введіть)">
             <input type="text" id="to_address" placeholder="Куди їдемо?">
         </div>
-        <button id="submitBtn">Замовити таксі</button>
+        <div class="btn-group">
+            <button id="cancelBtn" onclick="cancelOrder()">Скасувати</button>
+            <button id="submitBtn">Замовити</button>
+        </div>
     </div>
 
     <script>
-        let map, marker;
+        let map, marker, geocoder;
         const kobelyaky = { lat: 49.14452, lng: 34.19065 };
 
         function initMap() {
+            geocoder = new google.maps.Geocoder();
             map = new google.maps.Map(document.getElementById("map"), {
                 center: kobelyaky,
                 zoom: 15,
@@ -41,10 +50,44 @@
                 draggable: true
             });
 
-            // Оновлюємо адресу при перетягуванні маркера
-            marker.addListener('dragend', function(event) {
-                document.getElementById("from_address").value = `Координати: ${event.latLng.lat().toFixed(5)}, ${event.latLng.lng().toFixed(5)}`;
+            // Клік по мапі переносить маркер і визначає адресу
+            map.addListener('click', (event) => {
+                marker.setPosition(event.latLng);
+                updateAddress(event.latLng);
             });
+
+            // Перетягування маркера
+            marker.addListener('dragend', (event) => {
+                updateAddress(event.latLng);
+            });
+        }
+
+        function updateAddress(latLng) {
+            geocoder.geocode({ location: latLng }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    document.getElementById("from_address").value = results[0].formatted_address;
+                } else {
+                    document.getElementById("from_address").value = `${latLng.lat().toFixed(5)}, ${latLng.lng().toFixed(5)}`;
+                }
+            });
+        }
+
+        function geolocate() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const pos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                    };
+                    map.setCenter(pos);
+                    marker.setPosition(pos);
+                    updateAddress(pos);
+                }, () => {
+                    alert("Не вдалося отримати вашу геолокацію.");
+                });
+            } else {
+                alert("Ваш пристрій не підтримує геолокацію.");
+            }
         }
 
         window.onload = initMap;
@@ -60,6 +103,10 @@
             tg.sendData(JSON.stringify(data));
             tg.close();
         });
+
+        function cancelOrder() {
+            tg.close();
+        }
     </script>
 </body>
 </html>
