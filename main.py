@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from aiogram import Bot, Dispatcher, F, types
-from aiogram.types import WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, Message
+from aiogram.types import WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
 from aiogram.filters import Command
 
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +21,7 @@ WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=106"
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    # Створюємо кнопку, яка закріплюється знизу екрана
+    # Кнопка відкриття веб-додатка знизу екрана
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -62,7 +62,16 @@ async def handle_web_app_data(message: Message):
         )
         await message.answer(client_text, parse_mode="Markdown")
         
-        # 2. Формуємо сповіщення для водіїв у групу
+        # 2. Формуємо інлайн-кнопки для водіїв у групі
+        driver_keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="✅ Прийняти", callback_data=f"accept_{user_id}"),
+                    InlineKeyboardButton(text="❌ Відмовитись", callback_data=f"cancel_{user_id}")
+                ]
+            ]
+        )
+        
         driver_text = (
             "🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
             f"📍 **Звідки:** {address_from}\n"
@@ -71,13 +80,45 @@ async def handle_web_app_data(message: Message):
         )
         
         if DRIVER_CHAT_ID:
-            await bot.send_message(chat_id=DRIVER_CHAT_ID, text=driver_text, parse_mode="Markdown")
+            await bot.send_message(
+                chat_id=DRIVER_CHAT_ID, 
+                text=driver_text, 
+                reply_markup=driver_keyboard, 
+                parse_mode="Markdown"
+            )
         else:
             logging.warning("⚠️ DRIVER_CHAT_ID не налаштовано у змінних середовища Railway!")
             
     except Exception as e:
         logging.error(f"Помилка обробки даних з WebApp: {e}")
         await message.answer("⚠️ Сталася помилка при замовленні. Спробуйте ще раз.")
+
+# Обробка натискань водіїв на кнопки «Прийняти» або «Відмовитись»
+@dp.callback_query(F.data.startswith("accept_") | F.data.startswith("cancel_"))
+async def handle_driver_action(callback: CallbackQuery):
+    action, client_id = callback.data.split("_")
+    driver_name = callback.from_user.first_name
+    
+    if action == "accept":
+        new_text = callback.message.text + f"\n\n✅ **Статус:** Замовлення прийняв водій **{driver_name}**"
+        # Видаляємо кнопки, щоб інші водії бачили, що замовлення вже зайняте
+        await callback.message.edit_text(new_text, parse_mode="Markdown")
+        await callback.answer(f"Ви прийняли замовлення!", show_alert=False)
+        
+        # Опційно: можна надіслати сповіщення клієнту, що водій знайшовся
+        try:
+            await bot.send_message(
+                chat_id=int(client_id), 
+                text=f"🚖 Водій **{driver_name}** прийняв ваше замовлення і виїжджає!", 
+                parse_mode="Markdown"
+            )
+        except Exception:
+            pass
+            
+    elif action == "cancel":
+        new_text = callback.message.text + f"\n\n❌ **Статус:** Водій **{driver_name}** відмовився від замовлення."
+        await callback.message.edit_text(new_text, parse_mode="Markdown")
+        await callback.answer(f"Ви відмовилися від замовлення.", show_alert=False)
 
 async def main():
     logging.info("Бот запущено...")
