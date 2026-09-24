@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 
 TOKEN = "8895482400:AAECLb1186EcGMi5laXwO3DYWayckFJ-dIk"
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/"
-DRIVERS_CHAT_ID = -1002456789123  # Замініть на свій ID або ID групи водіїв
+DRIVERS_CHAT_ID = -1002456789123  # Замініть на ID групи водіїв або свій ID для тестів
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 bot = Bot(token=TOKEN)
@@ -29,23 +29,23 @@ async def command_start_handler(message: Message):
     
     await message.answer(
         "👋 Вітаємо у службі таксі Кобеляки!\n\n"
-        "Натисніть кнопку нижче, щоб відкрити карту та викликати машину:",
+        "Натисніть кнопку нижче, щоб відкрити карту, обрати звідки та куди їхати:",
         reply_markup=keyboard
     )
 
-# Обробник даних, які надсилає міні-додаток через tg.sendData()
+# Цей блок ловить дані, які надсилає міні-додаток Google Maps при натисканні "Замовити таксі"
 @dp.message(F.web_app_data)
 async def web_app_order_handler(message: Message):
     try:
         data = json.loads(message.web_app_data.data)
-        address_from = data.get("address_from", "Центр")
-        address_to = data.get("address_to", "Не вказано")
-        
+        address_from = data.get("address_from", "Центр (Кобеляки)")
+        address_to = data.get("address_to", "В межах міста")
+
         user_id = message.from_user.id
         user_name = message.from_user.full_name
         user_username = f"@{message.from_user.username}" if message.from_user.username else f"ID: {user_id}"
 
-        # Повідомлення клієнту
+        # Підтвердження клієнту
         await message.answer(
             f"✅ **Ваше замовлення прийняте!**\n\n"
             f"📍 **Звідки:** {address_from}\n"
@@ -80,17 +80,17 @@ async def web_app_order_handler(message: Message):
             )
 
     except Exception as e:
-        logging.error(f"Помилка WebApp даних: {e}")
+        logging.error(f"Помилка обробки WebApp даних: {e}")
         await message.answer("Сталася помилка при замовленні. Спробуйте ще раз.")
 
-# Обробка натискання кнопок водіями
+# Обробник натискання кнопок водіями
 @dp.callback_query(F.data.startswith("accept_") | F.data.startswith("reject_"))
 async def driver_action_handler(callback: CallbackQuery):
     action, client_id_str = callback.data.split("_")
     client_id = int(client_id_str)
     driver_name = callback.from_user.full_name
 
-3    if action == "accept":
+    if action == "accept":
         await callback.message.edit_text(
             f"{callback.message.text}\n\n"
             f"✅ **Замовлення прийняв водій:** {driver_name}",
