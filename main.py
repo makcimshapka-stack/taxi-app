@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 
 TOKEN = "8895482400:AAECLb1186EcGMi5laXwO3DYWayckFJ-dIk"
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/"
-DRIVERS_CHAT_ID = -1002456789123  # Вкажіть правильний ID групи водіїв або свій ID для тестів
+DRIVERS_CHAT_ID = -1002456789123  # Замініть на свій ID або ID групи водіїв
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 bot = Bot(token=TOKEN)
@@ -16,18 +16,6 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message):
-    # Перевіряємо, чи є параметри передачі з веб-додатка (запасний варіант)
-    if message.text and message.text.startswith("/start order_"):
-        try:
-            parts = message.text.split("_", 2)
-            if len(parts) == 3:
-                address_from = parts[1].replace("+", " ")
-                address_to = parts[2].replace("+", " ")
-                await process_order_data(message, address_from, address_to)
-                return
-        except Exception:
-            pass
-
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -41,59 +29,58 @@ async def command_start_handler(message: Message):
     
     await message.answer(
         "👋 Вітаємо у службі таксі Кобеляки!\n\n"
-        "Натисніть кнопку нижче, щоб відкрити карту, обрати маршрут і викликати машину:",
+        "Натисніть кнопку нижче, щоб відкрити карту та викликати машину:",
         reply_markup=keyboard
     )
 
-async def process_order_data(message: Message, address_from: str, address_to: str):
-    user_id = message.from_user.id
-    user_name = message.from_user.full_name
-    user_username = f"@{message.from_user.username}" if message.from_user.username else f"ID: {user_id}"
-
-    # Підтвердження клієнту
-    await message.answer(
-        f"✅ **Ваше замовлення прийняте!**\n\n"
-        f"📍 **Звідки:** {address_from}\n"
-        f"🏁 **Куди:** {address_to}\n\n"
-        f"⏳ Шукаємо вільного водія...",
-        parse_mode="Markdown"
-    )
-
-    # Кнопки для водіїв
-    drivers_keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Прийняти", callback_data=f"accept_{user_id}"),
-                InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject_{user_id}")
-            ]
-        ]
-    )
-
-    driver_text = (
-        f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!**\n\n"
-        f"👤 **Клієнт:** {user_name} ({user_username})\n"
-        f"📍 **Звідки:** {address_from}\n"
-        f"🏁 **Куди:** {address_to}"
-    )
-
-    if DRIVERS_CHAT_ID:
-        await bot.send_message(
-            chat_id=DRIVERS_CHAT_ID,
-            text=driver_text,
-            reply_markup=drivers_keyboard,
-            parse_mode="Markdown"
-        )
-
-# Обробник даних із міні-додатка через tg.sendData()
+# Обробник даних, які надсилає міні-додаток через tg.sendData()
 @dp.message(F.web_app_data)
 async def web_app_order_handler(message: Message):
     try:
         data = json.loads(message.web_app_data.data)
         address_from = data.get("address_from", "Центр")
         address_to = data.get("address_to", "Не вказано")
-        await process_order_data(message, address_from, address_to)
+        
+        user_id = message.from_user.id
+        user_name = message.from_user.full_name
+        user_username = f"@{message.from_user.username}" if message.from_user.username else f"ID: {user_id}"
+
+        # Повідомлення клієнту
+        await message.answer(
+            f"✅ **Ваше замовлення прийняте!**\n\n"
+            f"📍 **Звідки:** {address_from}\n"
+            f"🏁 **Куди:** {address_to}\n\n"
+            f"⏳ Шукаємо вільного водія...",
+            parse_mode="Markdown"
+        )
+
+        # Кнопки для водіїв у чаті водіїв
+        drivers_keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="✅ Прийняти", callback_data=f"accept_{user_id}"),
+                    InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject_{user_id}")
+                ]
+            ]
+        )
+
+        driver_text = (
+            f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!**\n\n"
+            f"👤 **Клієнт:** {user_name} ({user_username})\n"
+            f"📍 **Звідки:** {address_from}\n"
+            f"🏁 **Куди:** {address_to}"
+        )
+
+        if DRIVERS_CHAT_ID:
+            await bot.send_message(
+                chat_id=DRIVERS_CHAT_ID,
+                text=driver_text,
+                reply_markup=drivers_keyboard,
+                parse_mode="Markdown"
+            )
+
     except Exception as e:
-        logging.error(f"Помилка обробки WebApp даних: {e}")
+        logging.error(f"Помилка WebApp даних: {e}")
         await message.answer("Сталася помилка при замовленні. Спробуйте ще раз.")
 
 # Обробка натискання кнопок водіями
@@ -103,7 +90,7 @@ async def driver_action_handler(callback: CallbackQuery):
     client_id = int(client_id_str)
     driver_name = callback.from_user.full_name
 
-    if action == "accept":
+3    if action == "accept":
         await callback.message.edit_text(
             f"{callback.message.text}\n\n"
             f"✅ **Замовлення прийняв водій:** {driver_name}",
