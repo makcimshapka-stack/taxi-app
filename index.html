@@ -3,27 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вибір маршруту на мапі</title>
+    <title>Виклик таксі</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Підключаємо Leaflet CSS та JS для інтерактивної карти -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-        #map-container { width: 100%; height: 45vh; position: relative; }
+        #map-container { width: 100%; height: 38vh; position: relative; }
         #map { width: 100%; height: 100%; }
-        .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 32px; pointer-events: none; z-index: 1000; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 55vh; background: #fff; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
-        .input-group { margin-bottom: 6px; }
-        label { font-size: 11px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
-        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
-        .quick-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-        .q-btn { background: #e1ecf4; color: #0366d6; border: none; padding: 5px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: bold; }
-        .btn-group { display: flex; gap: 8px; margin-top: 6px; }
-        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 38px; pointer-events: none; z-index: 1000; }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 62vh; background: #fff; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
+        .input-group { margin-bottom: 8px; }
+        label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 3px; }
+        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
+        input:focus { border-color: #007aff; background: #f0f7ff; }
+        .quick-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+        .q-btn { background: #eef5ff; border: 1px solid #cce0ff; color: #007aff; padding: 6px 10px; font-size: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .q-btn:active { background: #d0e4ff; }
+        .btn-group { display: flex; gap: 10px; margin-top: 5px; }
+        button.action-btn { border: none; padding: 12px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
-        .hint { font-size: 11px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
+        .hint { font-size: 12px; color: #007aff; text-align: center; margin-bottom: 6px; font-weight: bold; background: #eef5ff; padding: 5px; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -35,29 +36,33 @@
 
     <div class="panel">
         <div>
-            <div class="hint">🗺 Рухайте мапу, щоб поставити мітку на місці посадки</div>
-            
-            <div class="quick-buttons">
-                <button class="q-btn" onclick="setPreset('Автостанція', 49.1460, 34.1850)">Автостанція</button>
-                <button class="q-btn" onclick="setPreset('Лікарня', 49.1410, 34.2000)">Лікарня</button>
-                <button class="q-btn" onclick="setPreset('Ринок', 49.1450, 34.1910)">Ринок</button>
-                <button class="q-btn" onclick="setPreset('Вокзал', 49.1320, 34.1780)">Вокзал</button>
-            </div>
+            <div class="hint">📍 Рухайте мапу або оберіть швидку точку</div>
 
             <div class="input-group">
+                <div class="quick-buttons" style="margin-bottom: 6px;">
+                    <button type="button" class="q-btn" onclick="setFrom('Автостанція')">Автостанція</button>
+                    <button type="button" class="q-btn" onclick="setFrom('Лікарня')">Лікарня</button>
+                    <button type="button" class="q-btn" onclick="setFrom('Ринок')">Ринок</button>
+                    <button type="button" class="q-btn" onclick="setFrom('Вокзал')">Вокзал</button>
+                </div>
                 <label>📍 Звідки забирати:</label>
-                <input type="text" id="from_address" value="Центр (Кобеляки)" placeholder="Адреса або точка з мапи">
+                <input type="text" id="from_address" placeholder="Введіть вулицю" value="Центр (Кобеляки)">
             </div>
             
             <div class="input-group">
                 <label>🏁 Куди їдемо (призначення):</label>
                 <input type="text" id="to_address" placeholder="Введіть пункт призначення">
+                <div class="quick-buttons" style="margin-top: 4px;">
+                    <button type="button" class="q-btn" onclick="setTo('АТБ')">АТБ</button>
+                    <button type="button" class="q-btn" onclick="setTo('Центр')">Центр</button>
+                    <button type="button" class="q-btn" onclick="setTo('Покровська 50')">Покровська 50</button>
+                </div>
             </div>
         </div>
 
         <div class="btn-group">
-            <button id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
-            <button id="submitBtn">Замовити таксі</button>
+            <button type="button" class="action-btn" id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
+            <button type="button" class="action-btn" id="submitBtn" onclick="makeOrder()">Замовити таксі</button>
         </div>
     </div>
 
@@ -65,7 +70,6 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Ініціалізація Leaflet карти (центр у Кобеляках)
         const map = L.map('map', {zoomControl: false}).setView([49.1445, 34.1906], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -73,43 +77,58 @@
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        let currentLat = 49.1445;
-        let currentLng = 34.1906;
+        let isEditingFrom = false;
+        const fromInput = document.getElementById('from_address');
+        const toInput = document.getElementById('to_address');
 
-        // Зберігаємо координати центру карти під час пересування
-        map.on('move', () => {
+        fromInput.addEventListener('focus', () => { isEditingFrom = true; });
+
+        map.on('moveend', () => {
             const center = map.getCenter();
-            currentLat = center.lat;
-            currentLng = center.lng;
+            if (!isEditingFrom) {
+                fromInput.value = `GPS: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`;
+            }
         });
 
-        function setPreset(name, lat, lng) {
-            map.setView([lat, lng], 16);
-            document.getElementById('from_address').value = name;
-            currentLat = lat;
-            currentLng = lng;
+        function setFrom(text) {
+            isEditingFrom = true;
+            fromInput.value = text;
         }
 
-        document.getElementById("submitBtn").addEventListener("click", () => {
-            const from = document.getElementById("from_address").value.trim() || "Точка на мапі";
-            const to = document.getElementById("to_address").value.trim();
+        function setTo(text) {
+            toInput.value = text;
+        }
 
-            if (!to) {
-                alert("Будь ласка, введіть пункт призначення!");
+        function makeOrder() {
+            const fromVal = fromInput.value.trim();
+            const toVal = toInput.value.trim();
+
+            if (!toVal) {
+                alert("Будь ласка, введіть пункт призначення (Куди)!");
+                toInput.focus();
                 return;
             }
 
-            const data = { 
-                action: "new_order",
-                address_from: from, 
-                address_to: to,
-                lat: currentLat,
-                lng: currentLng
-            };
+            // Формуємо текстове замовлення для бота
+            const orderText = `🚖 Замовлення таксі:\n📍 Звідки: ${fromVal || "Центр"}\n🏁 Куди: ${toVal}`;
+
+            try {
+                // Спершу намагаємося передати через стандартний WebApp API
+                tg.sendData(JSON.stringify({ 
+                    action: "new_order",
+                    address_from: fromVal || "Центр", 
+                    address_to: toVal
+                }));
+            } catch (e) {
+                // Якщо не вийшло, передаємо через відкриттяпосилання-бота з текстом
+                window.location.href = `https://t.me/share/url?url=${encodeURIComponent(orderText)}`;
+            }
             
-            tg.sendData(JSON.stringify(data));
-            tg.close();
-        });
+            // Закриваємо вікно додатка
+            setTimeout(() => {
+                tg.close();
+            }, 300);
+        }
     </script>
 </body>
 </html>
