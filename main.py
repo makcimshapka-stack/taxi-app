@@ -8,7 +8,6 @@ from aiogram.filters import Command
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("BOT_TOKEN")
-# ID групи водіїв (можна прописати тут напряму або додати у змінні Railway)
 DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID") # Наприклад: "-1001234567890"
 
 if not TOKEN:
@@ -17,7 +16,7 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=105"
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=106"
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
@@ -49,7 +48,6 @@ async def handle_web_app_data(message: Message):
             address_from = data.get("address_from", "Не вказано")
             address_to = data.get("address_to", "Не вказано")
             user_name = message.from_user.first_name
-            user_username = f"@{message.from_user.username}" if message.from_user.username "немає" else "не вказано"
             
             # Відповідь клієнту в особисті повідомлення
             client_text = (
@@ -62,13 +60,13 @@ async def handle_web_app_data(message: Message):
             
             # Повідомлення для групи водіїв
             driver_text = (
-            "🚨 **НОВЕ ЗАМОВЛЕННЯ!** 🚨\n\n"
-            f"📍 **Звідки:** {address_from}\n"
-            f"🏁 **Куди:** {address_to}\n"
-            f"👤 **Клієнт:** {user_name}\n"
-        )
+                "🚨 **НОВЕ ЗАМОВЛЕННЯ!** 🚨\n\n"
+                f"📍 **Звідки:** {address_from}\n"
+                f"🏁 **Куди:** {address_to}\n"
+                f"👤 **Клієнт:** {user_name}"
+            )
             
-            # Якщо ви вказали ID групи водіїв, бот надішле туди замовлення
+            # Відправляємо в групу водіїв, якщо вказано ID
             if DRIVER_CHAT_ID:
                 await bot.send_message(chat_id=DRIVER_CHAT_ID, text=driver_text, parse_mode="Markdown")
             else:
