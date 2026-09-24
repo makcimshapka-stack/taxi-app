@@ -16,15 +16,17 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
+# Замініть посилання на ваше актуальне з GitHub Pages (можете залишити з вашою версією)
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=106"
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
+    # Використовуємо тільки інлайн-кнопку для відкриття веб-додатка
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚖 Замовити таксі", 
+                    text="🚖 Замовити таксі (Карта)", 
                     web_app=WebAppInfo(url=WEB_APP_URL)
                 )
             ]
@@ -34,9 +36,10 @@ async def cmd_start(message: Message):
     welcome_text = (
         f"Вітаю, {message.from_user.first_name}! 👋\n\n"
         "Це офіційний бот служби таксі в Кобеляках.\n"
-        "Натисніть кнопку нижче, щоб відкрити замовлення:"
+        "Натисніть кнопку нижче, щоб відкрити карту та оформити замовлення:"
     )
     
+    # Видаляємо старі клавіатури, якщо вони лишилися в історії, і надсилаємо чисте повідомлення
     await message.answer(welcome_text, reply_markup=keyboard)
 
 @dp.message(F.web_app_data)
