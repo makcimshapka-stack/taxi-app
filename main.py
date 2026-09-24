@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import sys
 from aiogram import Bot, Dispatcher, F
@@ -33,13 +32,13 @@ async def command_start_handler(message: Message):
         reply_markup=keyboard
     )
 
-# Цей блок ловить дані, які надсилає міні-додаток Google Maps при натисканні "Замовити таксі"
-@dp.message(F.web_app_data)
-async def web_app_order_handler(message: Message):
+# Ловимо текст замовлення, який передається з міні-додатка
+@dp.message(F.text.startswith("🚖 Замовлення таксі:"))
+async def process_text_order(message: Message):
     try:
-        data = json.loads(message.web_app_data.data)
-        address_from = data.get("address_from", "Центр (Кобеляки)")
-        address_to = data.get("address_to", "В межах міста")
+        lines = message.text.split("\n")
+        address_from = lines[1].replace("📍 Звідки: ", "") if len(lines) > 1 else "Центр"
+        address_to = lines[2].replace("🏁 Куди: ", "") if len(lines) > 2 else "Не вказано"
 
         user_id = message.from_user.id
         user_name = message.from_user.full_name
@@ -80,10 +79,10 @@ async def web_app_order_handler(message: Message):
             )
 
     except Exception as e:
-        logging.error(f"Помилка обробки WebApp даних: {e}")
+        logging.error(f"Помилка обробки замовлення: {e}")
         await message.answer("Сталася помилка при замовленні. Спробуйте ще раз.")
 
-# Обробник натискання кнопок водіями
+# Обробка натискання кнопок водіями
 @dp.callback_query(F.data.startswith("accept_") | F.data.startswith("reject_"))
 async def driver_action_handler(callback: CallbackQuery):
     action, client_id_str = callback.data.split("_")
