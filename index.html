@@ -2,115 +2,168 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Замовлення Таксі - Кобеляки</title>
+    
+    <!-- Підключаємо Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Підключаємо стилі та скрипти карти Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-        #map { width: 100%; height: 40vh; border: none; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh; background: #fff; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 6px; }
-        label { font-size: 12px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
-        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
-        input.active-field { border-color: #0366d6; background: #f0f7ff; }
-        .gps-btn { background: #0088cc; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 6px; width: 100%; }
-        .btn-group { display: flex; gap: 8px; margin-top: 4px; }
-        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
-        #submitBtn { background: #2ea44f; color: white; }
-        #cancelBtn { background: #d73a49; color: white; }
-        .hint { font-size: 12px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #222);
+        }
+        #map {
+            width: 100%;
+            height: 55vh;
+            position: relative;
+        }
+        .panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 45vh;
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .input-group {
+            margin-bottom: 12px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--tg-theme-hint-color, #777);
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 15px;
+            background: var(--tg-theme-secondary-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            outline: none;
+        }
+        .input-group input:focus {
+            border-color: #2481cc;
+        }
+        .order-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            transition: opacity 0.2s;
+        }
+        .order-btn:active {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Карта Кобеляк -->
-    <iframe id="map" src="https://www.openstreetmap.org/export/embed.html?bbox=34.175%2C49.135%2C34.215%2C49.155&layer=mapnik&marker=49.14452%2C34.19065"></iframe>
+    <!-- Блок карти -->
+    <div id="map"></div>
 
+    <!-- Панель керування замовленням -->
     <div class="panel">
         <div>
-            <div class="hint" id="instruction">👇 Вкажіть маршрут або натисніть GPS</div>
-            
-            <button class="gps-btn" onclick="getGPSLocation()">📍 Визначити мою геолокацію автоматично</button>
-
-            <div class="input-group" onclick="setActiveField('from')">
-                <label>📍 Звідки їдемо:</label>
-                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Адреса подачі">
+            <div class="input-group">
+                <label for="addressFrom">📍 Звідки забирати?</label>
+                <input type="text" id="addressFrom" placeholder="Вулиця, номер будинку або орієнтир">
             </div>
             
-            <div class="input-group" onclick="setActiveField('to')">
-                <label>🏁 Куди їдемо:</label>
-                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
+            <div class="input-group">
+                <label for="addressTo">🏁 Куди їдемо?</label>
+                <input type="text" id="addressTo" placeholder="Пункт призначення">
             </div>
         </div>
 
-        <div class="btn-group">
-            <button id="cancelBtn" onclick="cancelOrder()">Скасувати</button>
-            <button id="submitBtn">Замовити таксі</button>
-        </div>
+        <button class="order-btn" onclick="submitOrder()">Замовити таксі</button>
     </div>
 
     <script>
-        let activeField = 'from';
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        // Ініціалізація Telegram WebApp
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Розгортаємо на весь екран
 
-        function getGPSLocation() {
-            if (navigator.geolocation) {
-                document.getElementById('instruction').innerText = "⏳ Отримуємо GPS-координати...";
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        document.getElementById('map').src = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.01}%2C${lat-0.01}%2C${lng+0.01}%2C${lat+0.01}&layer=mapnik&marker=${lat}%2C${lng}`;
-                        
-                        document.getElementById('from_address').value = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)} (Кобеляки)`;
-                        document.getElementById('instruction').innerText = "✅ Геолокацію успішно визначено!";
-                    },
-                    (error) => {
-                        alert("Не вдалося отримати геолокацію. Перевірте дозволи в телефоні.");
-                        document.getElementById('instruction').innerText = "👇 Введіть адресу вручну";
-                    },
-                    { timeout: 10000, enableHighAccuracy: true }
-                );
-            } else {
-                alert("Ваш пристрій не підтримує геолокацію.");
-            }
-        }
+        // Центр міста Кобеляки (Полтавська область)
+        const kobelyakyCoords = [49.1435, 34.2015];
 
-        function setActiveField(field) {
-            activeField = field;
-            document.getElementById('from_address').classList.remove('active-field');
-            document.getElementById('to_address').classList.remove('active-field');
-            
-            if (field === 'from') {
-                document.getElementById('from_address').classList.add('active-field');
-            } else {
-                document.getElementById('to_address').classList.add('active-field');
-            }
-        }
+        // Створюємо карту
+        const map = L.map('map').setView(kobelyakyCoords, 14);
 
-        document.getElementById("submitBtn").addEventListener("click", () => {
-            const from = document.getElementById("from_address").value.trim() || "Центр (Кобеляки)";
-            const to = document.getElementById("to_address").value.trim();
+        // Додаємо шар карти OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
-            if (!to) {
-                alert("Будь ласка, введіть адресу призначення!");
+        // Маркер по центру карти (для вибору точки)
+        const marker = L.marker(kobelyakyCoords, {draggable: true}).addTo(map);
+
+        // При переміщенні карти оновлюємо поле "Звідки" (можна додати геокодер, або залишити як приклад)
+        marker.on('dragend', function(event) {
+            let position = marker.getLatLng();
+            document.getElementById('addressFrom').value = `Координати: ${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}`;
+        });
+
+        // Функція надсилання замовлення у бот
+        function submitOrder() {
+            const addressFrom = document.getElementById('addressFrom').value.trim();
+            const addressTo = document.getElementById('addressTo').value.trim();
+
+            if (!addressFrom) {
+                alert("Будь ласка, вкажіть адресу відправлення!");
                 return;
             }
 
-            const data = { 
-                action: "new_order",
-                address_from: from, 
-                address_to: to 
-            };
-            
-            tg.sendData(JSON.stringify(data));
-            tg.close();
-        });
+            if (!addressTo) {
+                alert("Будь ласка, вкажіть пункт призначення!");
+                return;
+            }
 
-        function cancelOrder() {
-            tg.close();
+            // Формуємо об'єкт із даними замовлення
+            const orderData = {
+                action: "new_order",
+                address_from: addressFrom,
+                address_to: addressTo
+            };
+
+            if (window.Telegram && window.Telegram.WebApp) {
+                // Передаємо дані назад у бот
+                tg.sendData(JSON.stringify(orderData));
+                // Закриваємо міні-додаток
+                tg.close();
+            } else {
+                alert("Помилка: відкрийте цей додаток через Telegram-бота!");
+            }
         }
     </script>
 </body>
