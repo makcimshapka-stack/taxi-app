@@ -15,10 +15,10 @@
         .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh; background: #fff; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
         .input-group { margin-bottom: 10px; }
         label { font-size: 11px; font-weight: bold; color: #555; display: block; margin-bottom: 4px; }
-        input { width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
         input:focus { border-color: #007aff; background: #f0f7ff; }
         .btn-group { display: flex; gap: 10px; margin-top: 5px; }
-        button { border: none; padding: 12px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        button { border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
         .hint { font-size: 12px; color: #007aff; text-align: center; margin-bottom: 8px; font-weight: bold; background: #eef5ff; padding: 6px; border-radius: 8px; }
@@ -33,11 +33,11 @@
 
     <div class="panel">
         <div>
-            <div class="hint">📍 Рухайте мапу або пишіть адреси вручну</div>
+            <div class="hint">📍 Введіть адреси або рухайте мапу</div>
 
             <div class="input-group">
                 <label>📍 Звідки забирати:</label>
-                <input type="text" id="from_address" placeholder="Введіть вулицю або оберіть на мапі" value="Центр (Кобеляки)">
+                <input type="text" id="from_address" placeholder="Введіть вулицю" value="Центр (Кобеляки)">
             </div>
             
             <div class="input-group">
@@ -47,42 +47,33 @@
         </div>
 
         <div class="btn-group">
-            <button id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
-            <button id="submitBtn">Замовити таксі</button>
+            <button id="cancelBtn" onclick="try { window.Telegram.WebApp.close(); } catch(e) { window.close(); }">Скасувати</button>
+            <button id="submitBtn" onclick="makeOrder()">Замовити таксі</button>
         </div>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        // Безпечна ініціалізація Telegram WebApp
+        let tg = window.Telegram.WebApp;
+        try {
+            tg.expand();
+        } catch (e) {
+            console.log("WebApp не ініціалізовано");
+        }
 
-        // Автогеолокація пристрою
-        let defaultLat = 49.1445, defaultLng = 34.1906;
-        const map = L.map('map', {zoomControl: false}).setView([defaultLat, defaultLng], 15);
+        // Ініціалізація карти Leaflet
+        const map = L.map('map', {zoomControl: false}).setView([49.1445, 34.1906], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Пробуємо отримати реальний GPS користувача
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(position => {
-                defaultLat = position.coords.latitude;
-                defaultLng = position.coords.longitude;
-                map.setView([defaultLat, defaultLng], 15);
-            }, () => {
-                console.log("Не вдалося отримати GPS, використовуємо стандартні координати");
-            });
-        }
-
-        // Оновлення адреси «Звідки» при русі мапи, якщо користувач не редагує поле вручну
         let isEditingFrom = false;
         const fromInput = document.getElementById('from_address');
         const toInput = document.getElementById('to_address');
 
         fromInput.addEventListener('focus', () => { isEditingFrom = true; });
-        fromInput.addEventListener('blur', () => { if(!fromInput.value) isEditingFrom = false; });
 
         map.on('moveend', () => {
             const center = map.getCenter();
@@ -91,7 +82,8 @@
             }
         });
 
-        document.getElementById("submitBtn").addEventListener("click", () => {
+        // Головна функція замовлення, яка викликається прямо з HTML-кнопки
+        function makeOrder() {
             const fromVal = fromInput.value.trim();
             const toVal = toInput.value.trim();
 
@@ -103,13 +95,17 @@
 
             const data = { 
                 action: "new_order",
-                address_from: fromVal, 
+                address_from: fromVal || "Центр", 
                 address_to: toVal
             };
-            
-            // Передаємо дані у бот та закриваємо WebApp
-            tg.sendData(JSON.stringify(data));
-        });
+
+            try {
+                // Відправляємо дані боту
+                tg.sendData(JSON.stringify(data));
+            } catch (err) {
+                alert("Помилка відправки даних: " + err.message);
+            }
+        }
     </script>
 </body>
 </html>
