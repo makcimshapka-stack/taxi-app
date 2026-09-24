@@ -109,25 +109,11 @@
                 return;
             }
 
-            // Формуємо текстове замовлення для бота
+            // Формуємо текст замовлення, який бот легко зловить як звичайне повідомлення
             const orderText = `🚖 Замовлення таксі:\n📍 Звідки: ${fromVal || "Центр"}\n🏁 Куди: ${toVal}`;
 
-            try {
-                // Спершу намагаємося передати через стандартний WebApp API
-                tg.sendData(JSON.stringify({ 
-                    action: "new_order",
-                    address_from: fromVal || "Центр", 
-                    address_to: toVal
-                }));
-            } catch (e) {
-                // Якщо не вийшло, передаємо через відкриттяпосилання-бота з текстом
-                window.location.href = `https://t.me/share/url?url=${encodeURIComponent(orderText)}`;
-            }
-            
-            // Закриваємо вікно додатка
-            setTimeout(() => {
-                tg.close();
-            }, 300);
+            // Відправляємо через Telegram share або відкриття посилання для чату бота з готовим текстом
+            window.location.href = `https://t.me/share/url?url=${encodeURIComponent(orderText)}`;
         }
     </script>
 </body>
