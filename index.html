@@ -1,109 +1,65 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Таксі Кобеляки</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; display: flex; flex-direction: column; background: #f8f9fa; }
-    #map { flex: 1; width: 100%; }
-    .controls { padding: 16px; background: #fff; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); border-radius: 16px 16px 0 0; z-index: 1000; }
-    .input-group { margin-bottom: 10px; }
-    label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
-    input { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
-    input:focus { border-color: #28a745; }
-    button { width: 100%; padding: 14px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 4px; transition: background 0.2s; }
-    button:active { background: #218838; }
-    .hint { font-size: 11px; color: #888; text-align: center; margin-bottom: 8px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Замовлення Таксі - Кобеляки</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-DUMMY_KEY_FOR_TESTING&libraries=places"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+        #map { height: 60vh; width: 100%; }
+        .panel { padding: 15px; background: #fff; height: 40vh; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        button { background: #2ea44f; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    </style>
 </head>
 <body>
 
-  <div id="map"></div>
-
-  <div class="controls">
-    <div class="hint">Наблизьте карту, щоб побачити номери будинків та вулиці</div>
-    <div class="input-group">
-      <label for="from">Звідки:</label>
-      <input type="text" id="from" placeholder="Введіть адресу або клікніть на мапу">
+    <div id="map"></div>
+    <div class="panel">
+        <div>
+            <input type="text" id="from_address" placeholder="Звідки (адреса або точка на мапі)">
+            <input type="text" id="to_address" placeholder="Куди їдемо?">
+        </div>
+        <button id="submitBtn">Замовити таксі</button>
     </div>
-    <div class="input-group">
-      <label for="to">Куди:</label>
-      <input type="text" id="to" placeholder="Введіть адресу або клікніть на мапу">
-    </div>
-    <button id="send-btn" onclick="submitOrder()">Підтвердити замовлення</button>
-  </div>
 
-  <script>
-    const tg = window.Telegram ? window.Telegram.WebApp : null;
+    <script>
+        let map, marker;
+        const kobelyaky = { lat: 49.14452, lng: 34.19065 };
 
-    if (tg) {
-      tg.ready();
-      tg.expand();
-    }
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: kobelyaky,
+                zoom: 15,
+            });
 
-    // Центрування на Кобеляках з початковим детальним зумом (16)
-    const map = L.map('map').setView([49.14452, 34.19065], 16);
+            marker = new google.maps.Marker({
+                position: kobelyaky,
+                map: map,
+                draggable: true
+            });
 
-    // Підключення детальної карти з підтримкою будинків і вулиць
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-      maxNativeZoom: 19
-    }).addTo(map);
-
-    let fromMarker = null;
-    let toMarker = null;
-
-    map.on('click', function(e) {
-      const coords = e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
-
-      if (!fromMarker) {
-        fromMarker = L.marker(e.latlng).addTo(map).bindPopup("Звідки").openPopup();
-        document.getElementById('from').value = "Координати: " + coords;
-      } else if (!toMarker) {
-        toMarker = L.marker(e.latlng).addTo(map).bindPopup("Куди").openPopup();
-        document.getElementById('to').value = "Координати: " + coords;
-      } else {
-        map.removeLayer(fromMarker);
-        map.removeLayer(toMarker);
-        toMarker = null;
-        fromMarker = L.marker(e.latlng).addTo(map).bindPopup("Звідки").openPopup();
-        document.getElementById('from').value = "Координати: " + coords;
-        document.getElementById('to').value = '';
-      }
-    });
-
-    function submitOrder() {
-      const fromVal = document.getElementById('from').value.trim();
-      const toVal = document.getElementById('to').value.trim();
-
-      if (!fromVal || !toVal) {
-        alert("Будь ласка, введіть або оберіть обидві точки!");
-        return;
-      }
-
-      const payload = JSON.stringify({
-        address_from: fromVal,
-        address_to: toVal
-      });
-
-      if (tg && tg.sendData) {
-        try {
-          tg.sendData(payload);
-          tg.close();
-          return;
-        } catch (e) {
-          console.log("sendData failed", e);
+            // Оновлюємо адресу при перетягуванні маркера
+            marker.addListener('dragend', function(event) {
+                document.getElementById("from_address").value = `Координати: ${event.latLng.lat().toFixed(5)}, ${event.latLng.lng().toFixed(5)}`;
+            });
         }
-      }
 
-      alert("Дані сформовано:\nЗвідки: " + fromVal + "\nКуди: " + toVal);
-      if (tg) tg.close();
-    }
-  </script>
+        window.onload = initMap;
+
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        document.getElementById("submitBtn").addEventListener("click", () => {
+            const from = document.getElementById("from_address").value || "Центр (Кобеляки)";
+            const to = document.getElementById("to_address").value || "В межах міста";
+
+            const data = { address_from: from, address_to: to };
+            tg.sendData(JSON.stringify(data));
+            tg.close();
+        });
+    </script>
 </body>
 </html>
