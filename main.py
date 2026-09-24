@@ -6,8 +6,8 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
-# Вставте сюди токен вашого бота від @BotFather
-TOKEN = "ТУТ_ВАШ_ТОКЕН_БОТА"
+# Ваш токен бота
+TOKEN = "8895482400:AAECLb1186EcGMi5laXwO3DYWayckFJ-dIk"
 
 # Посилання на ваш створений сайт на GitHub Pages (index.html)
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/"
