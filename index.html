@@ -3,16 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Таксі Кобеляки</title>
+  <title>Таксі Кобеляки - Visicom</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; display: flex; flex-direction: column; }
+    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; display: flex; flex-direction: column; background: #f8f9fa; }
     #map { flex: 1; width: 100%; }
-    .controls { padding: 12px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
-    input { width: 100%; padding: 10px; margin-bottom: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
-    button { width: 100%; padding: 14px; background: #28a745; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; }
+    .controls { padding: 16px; background: #fff; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); border-radius: 16px 16px 0 0; z-index: 1000; }
+    .input-group { margin-bottom: 10px; }
+    label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
+    input { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    input:focus { border-color: #28a745; }
+    button { width: 100%; padding: 14px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 4px; transition: background 0.2s; }
+    button:active { background: #218838; }
+    .hint { font-size: 11px; color: #888; text-align: center; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -20,8 +25,15 @@
   <div id="map"></div>
 
   <div class="controls">
-    <input type="text" id="from" placeholder="Точка А (Звідки)" readonly>
-    <input type="text" id="to" placeholder="Точка Б (Куди)" readonly>
+    <div class="hint">Натисніть на мапу, щоб вибрати точку А, потім точку Б, або введіть адреси вручну</div>
+    <div class="input-group">
+      <label for="from">Звідки:</label>
+      <input type="text" id="from" placeholder="Введіть адресу або клікніть на мапу">
+    </div>
+    <div class="input-group">
+      <label for="to">Куди:</label>
+      <input type="text" id="to" placeholder="Введіть адресу або клікніть на мапу">
+    </div>
     <button id="send-btn" onclick="submitOrder()">Підтвердити замовлення</button>
   </div>
 
@@ -33,40 +45,45 @@
       tg.expand();
     }
 
-    const map = L.map('map').setView([49.1453, 34.2040], 14);
+    // Ініціалізація мапи з центром у Кобеляках (відповідно до посилання Visicom)
+    const map = L.map('map').setView([49.14452, 34.19065], 14);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
+    // Підключення тайлів карти Visicom Raster API
+    L.tileLayer('https://tms.visicom.ua/3.0/planet/uk/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://visicom.ua/">Visicom</a>',
+      maxZoom: 19
     }).addTo(map);
 
     let fromMarker = null;
     let toMarker = null;
 
+    // Клік по мапі для вибору точок
     map.on('click', function(e) {
-      const latlng = e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
+      const coords = e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
 
       if (!fromMarker) {
         fromMarker = L.marker(e.latlng).addTo(map).bindPopup("Звідки").openPopup();
-        document.getElementById('from').value = latlng;
+        document.getElementById('from').value = "Координати: " + coords;
       } else if (!toMarker) {
         toMarker = L.marker(e.latlng).addTo(map).bindPopup("Куди").openPopup();
-        document.getElementById('to').value = latlng;
+        document.getElementById('to').value = "Координати: " + coords;
       } else {
+        // Якщо обидві точки вже є — скидаємо і ставимо нову "Звідки"
         map.removeLayer(fromMarker);
         map.removeLayer(toMarker);
         toMarker = null;
         fromMarker = L.marker(e.latlng).addTo(map).bindPopup("Звідки").openPopup();
-        document.getElementById('from').value = latlng;
+        document.getElementById('from').value = "Координати: " + coords;
         document.getElementById('to').value = '';
       }
     });
 
     function submitOrder() {
-      const fromVal = document.getElementById('from').value;
-      const toVal = document.getElementById('to').value;
+      const fromVal = document.getElementById('from').value.trim();
+      const toVal = document.getElementById('to').value.trim();
 
       if (!fromVal || !toVal) {
-        alert("Будь ласка, оберіть обидві точки на карті!");
+        alert("Будь ласка, введіть або оберіть обидві точки!");
         return;
       }
 
@@ -81,11 +98,11 @@
           tg.close();
           return;
         } catch (e) {
-          console.log("sendData failed");
+          console.log("sendData failed", e);
         }
       }
 
-      alert("Точки обрано!\nЗвідки: " + fromVal + "\nКуди: " + toVal);
+      alert("Дані сформовано:\nЗвідки: " + fromVal + "\nКуди: " + toVal);
       if (tg) tg.close();
     }
   </script>
