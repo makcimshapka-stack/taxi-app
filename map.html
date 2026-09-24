@@ -9,17 +9,18 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-        #map-container { width: 100%; height: 45vh; position: relative; }
+        #map-container { width: 100%; height: 42vh; position: relative; }
         #map { width: 100%; height: 100%; }
         .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 32px; pointer-events: none; z-index: 1000; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 55vh; background: #fff; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 58vh; background: #fff; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
         .input-group { margin-bottom: 6px; }
         label { font-size: 11px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
         input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
         .quick-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-        .q-btn { background: #e1ecf4; color: #0366d6; border: none; padding: 5px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: bold; }
+        .q-btn { background: #e1ecf4; color: #0366d6; border: none; padding: 5px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: bold; flex: 1; }
+        .gps-btn { background: #d4edda; color: #155724; width: 100%; margin-bottom: 6px; padding: 6px; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
         .btn-group { display: flex; gap: 8px; margin-top: 6px; }
-        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        button.action-btn { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
         .hint { font-size: 11px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
@@ -34,8 +35,10 @@
 
     <div class="panel">
         <div>
-            <div class="hint">🗺 Рухайте мапу, щоб поставити мітку на місці посадки</div>
+            <div class="hint">🗺 Рухайте мапу, щоб поставити мітку</div>
             
+            <button class="gps-btn" onclick="useMyLocation()">📍 Моя геолокація (GPS)</button>
+
             <div class="quick-buttons">
                 <button class="q-btn" onclick="setPreset('Автостанція', 49.1460, 34.1850)">Автостанція</button>
                 <button class="q-btn" onclick="setPreset('Лікарня', 49.1410, 34.2000)">Лікарня</button>
@@ -45,7 +48,7 @@
 
             <div class="input-group">
                 <label>📍 Звідки забирати:</label>
-                <input type="text" id="from_address" value="Центр (Кобеляки)" placeholder="Адреса або точка з мапи">
+                <input type="text" id="from_address" value="Точка на мапі" placeholder="Адреса або точка з мапи">
             </div>
             
             <div class="input-group">
@@ -55,8 +58,8 @@
         </div>
 
         <div class="btn-group">
-            <button id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
-            <button id="submitBtn">Замовити таксі</button>
+            <button id="cancelBtn" class="action-btn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
+            <button id="submitBtn" class="action-btn">Замовити таксі</button>
         </div>
     </div>
 
@@ -73,18 +76,44 @@
 
         let currentLat = 49.1445;
         let currentLng = 34.1906;
+        let isPresetSelected = false;
 
+        // Коли користувач рухає карту — змінюємо координати і оновлюємо поле «Звідки»
         map.on('move', () => {
             const center = map.getCenter();
             currentLat = center.lat;
             currentLng = center.lng;
+            
+            if (!isPresetSelected) {
+                document.getElementById('from_address').value = `Точка на мапі (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
+            }
+            isPresetSelected = false;
         });
 
         function setPreset(name, lat, lng) {
+            isPresetSelected = true;
             map.setView([lat, lng], 16);
             document.getElementById('from_address').value = name;
             currentLat = lat;
             currentLng = lng;
+        }
+
+        function useMyLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    isPresetSelected = true;
+                    map.setView([lat, lng], 17);
+                    document.getElementById('from_address').value = "Моя геолокація (GPS)";
+                    currentLat = lat;
+                    currentLng = lng;
+                }, () => {
+                    alert("Не вдалося отримати геолокацію. Увімкніть GPS.");
+                });
+            } else {
+                alert("Геолокація не підтримується вашим пристроєм.");
+            }
         }
 
         document.getElementById("submitBtn").addEventListener("click", () => {
