@@ -65,7 +65,7 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        let currentMode = 'from'; // 'from' або 'to' - куди ставить точку клік на мапі
+        let currentMode = 'from'; // 'from' або 'to'
         let fromCoords = null;
         let toCoords = null;
 
@@ -147,7 +147,6 @@
             .then(res => res.json())
             .then(data => {
                 if (data && data.display_name) {
-                    // Скорочуємо довгу адресу до основних деталей
                     let parts = data.display_name.split(',');
                     let shortAddress = parts.slice(0, 3).join(',').trim();
                     document.getElementById(elementId).value = shortAddress;
@@ -205,10 +204,13 @@
 
             localStorage.setItem("taxi_user_phone", phone);
 
+            // Формуємо дані разом із координатами для навігації водія
             const orderData = {
                 phone: phone,
                 address_from: addressFrom,
-                address_to: addressTo
+                address_to: addressTo,
+                lat: fromCoords ? fromCoords.lat : null,
+                lng: fromCoords ? fromCoords.lng : null
             };
 
             if (window.Telegram && window.Telegram.WebApp) {
