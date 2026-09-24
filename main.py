@@ -8,7 +8,7 @@ from aiogram.filters import Command
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("BOT_TOKEN")
-DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID") # Наприклад: "-1001234567890"
+DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID")
 
 if not TOKEN:
     raise ValueError("Помилка: BOT_TOKEN не знайдено!")
@@ -46,9 +46,12 @@ async def handle_web_app_data(message: Message):
     try:
         data = json.loads(message.web_app_data.data)
         
-        address_from = data.get("address_from", "Не вказано")
+        address_from = data.get("address_from", "Центр (Кобеляки)")
         address_to = data.get("address_to", "Не вказано")
         phone_number = data.get("phone", "Не вказано")
+        lat = data.get("lat")
+        lng = data.get("lng")
+        
         user_name = message.from_user.first_name
         user_id = message.from_user.id
         
@@ -62,9 +65,19 @@ async def handle_web_app_data(message: Message):
         )
         await message.answer(client_text, parse_mode="Markdown")
         
-        # 2. Кнопки для водіїв
+        # Генеруємо посилання на навігацію (якщо є координати — веде точно на точку, якщо ні — за назвою адреси)
+        if lat and lng:
+            nav_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
+        else:
+            # Якщо користувач вписав текст вручну, шукаємо за текстом + додаємо місто для точності
+            nav_url = f"https://www.google.com/maps/search/?api=1&query={address_from}, Кобеляки"
+
+        # 2. Формуємо кнопки для водіїв (Прийняти, Відмовитись + Навігація)
         driver_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="🗺️ Навігація (Google Maps)", url=nav_url)
+                ],
                 [
                     InlineKeyboardButton(text="✅ Прийняти", callback_data=f"accept_{user_id}"),
                     InlineKeyboardButton(text="❌ Відмовитись", callback_data=f"cancel_{user_id}")
@@ -88,7 +101,7 @@ async def handle_web_app_data(message: Message):
                 parse_mode="Markdown"
             )
         else:
-            logging.warning("⚠️ DRIVER_CHAT_ID не налаштовано у змінних середовища Railway!")
+            logging.warning("⚠️ DRIVER_CHAT_ID не налаштовано!")
             
     except Exception as e:
         logging.error(f"Помилка обробки даних з WebApp: {e}")
@@ -101,7 +114,14 @@ async def handle_driver_action(callback: CallbackQuery):
     
     if action == "accept":
         new_text = callback.message.text + f"\n\n✅ **Статус:** Замовлення прийняв водій **{driver_name}**"
-        await callback.message.edit_text(new_text, parse_mode="Markdown")
+        
+        # Залишаємо кнопку навігації зручною, а кнопки прийняття прибираємо
+        # Можна залишити тільки навігацію умовно або оновити клавіатуру
+        try:
+            await callback.message.edit_text(new_text, reply_markup=callback.message.reply_markup, parse_mode="Markdown")
+        except Exception:
+            pass
+            
         await callback.answer(f"Ви прийняли замовлення!", show_alert=False)
         
         try:
