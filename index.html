@@ -47,7 +47,7 @@
 
     <script>
         let map, geocoder;
-        let activeField = 'from'; // 'from' або 'to'
+        let activeField = 'from';
         let markerFrom = null;
         let markerTo = null;
         
@@ -62,13 +62,11 @@
                 clickableIcons: false
             });
 
-            // Клік по мапі ставитиме маркер для відповідного поля
             map.addListener('click', (event) => {
                 const clickedLocation = event.latLng;
                 setPoint(clickedLocation, activeField);
             });
 
-            // Початкова точка "Звідки" за замовчуванням у центрі
             setPoint(kobelyaky, 'from');
         }
 
@@ -134,8 +132,21 @@
             const from = document.getElementById("from_address").value || "Центр (Кобеляки)";
             const to = document.getElementById("to_address").value || "В межах міста";
 
-            const data = { address_from: from, address_to: to };
-            tg.sendData(JSON.stringify(data));
+            if (!to || to.includes("Натисніть сюди")) {
+                alert("Будь ласка, оберіть пункт призначення (Куди) на мапі!");
+                return;
+            }
+
+            const orderText = `🚖 Замовлення таксі:\n📍 Звідки: ${from}\n🏁 Куди: ${to}`;
+            const botUsername = "TaxiKobelyakyBot"; 
+            const url = `https://t.me/${botUsername}?text=${encodeURIComponent(orderText)}`;
+            
+            if (tg.openTelegramLink) {
+                tg.openTelegramLink(url);
+            } else {
+                window.open(url, '_blank');
+            }
+            
             tg.close();
         });
 
