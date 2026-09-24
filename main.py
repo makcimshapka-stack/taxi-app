@@ -16,14 +16,18 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=109"
+# Посилання на ваш оновлений Web App на GitHub Pages
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=110"
 
-# Сховище номерів телефонов клієнтів
+# Тимчасове сховище контактів
 user_phones = {}
+user_names = {}
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     user_id = message.from_user.id
+    user_names[user_id] = message.from_user.first_name
+    
     if user_id not in user_phones:
         request_phone_keyboard = ReplyKeyboardMarkup(
             keyboard=[
@@ -34,7 +38,7 @@ async def cmd_start(message: Message):
         )
         await message.answer(
             f"Вітаю, {message.from_user.first_name}! 👋\n\n"
-            "Для роботи служби таксі та зв'язку з водіями, будь ласка, натисніть кнопку нижче та поділіться номером телефону:",
+            "Для роботи служби таксі, будь ласка, поділіться номером телефону:",
             reply_markup=request_phone_keyboard
         )
     else:
@@ -52,13 +56,13 @@ async def send_main_menu(message: Message):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚖 Замовити таксі на мапі", 
+                    text="🚖 Викликати таксі", 
                     web_app=WebAppInfo(url=WEB_APP_URL)
                 )
             ]
         ]
     )
-    await message.answer("Натисніть кнопку нижче, щоб відкрити інтерактивну карту Кобеляк:", reply_markup=keyboard)
+    await message.answer("Натисніть кнопку нижче, щоб відкрити форму замовлення:", reply_markup=keyboard)
 
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: Message):
@@ -73,18 +77,20 @@ async def handle_web_app_data(message: Message):
             
             user_name = message.from_user.first_name
             user_id = message.from_user.id
-            phone = user_phones.get(user_id, "Не вказано")
+            
+            # Якщо номер є в пам'яті, беремо його, якщо ні — беремо з Telegram профілю або пишемо запит
+            phone = user_phones.get(user_id, message.from_user.username or "Не вказано")
             
             # Підтвердження клієнту
             await message.answer(
                 "✅ **Ваше замовлення прийнято в пошук!**\n\n"
                 f"📍 **Звідки:** {address_from}\n"
                 f"🏁 **Куди:** {address_to}\n\n"
-                "Очікуємо, поки водій прийме замовлення...",
+                "Очікуємо водія...",
                 parse_mode="Markdown"
             )
             
-            # Кнопка для водіїв (ховаємо lat, lng, phone та user_id в callback_data)
+            # Кнопка для водіїв
             driver_keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
@@ -128,27 +134,24 @@ async def accept_order(callback: CallbackQuery):
     phone = user_phones.get(client_id, "Не вказано")
     
     try:
-        # Сповіщаємо клієнта
         await bot.send_message(
             chat_id=client_id,
-            text=f"🚗 **Ваше замовлення прийнято!** Водій **{driver_name}** виїжджає до вас.",
+            text=f"🚗 **Замовлення прийнято!** Водій **{driver_name}** виїжджає.",
             parse_mode="Markdown"
         )
         
-        # Навігація для водія прямо до точок клієнта
         nav_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
         nav_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="🗺 Навігація до клієнта (Google Maps)", 
+                        text="🗺 Відкрити навігацію до клієнта", 
                         url=nav_url
                     )
                 ]
             ]
         )
         
-        # Надсилаємо водію в ЛС інформацію і навігацію
         try:
             await bot.send_message(
                 chat_id=driver_id,
@@ -159,14 +162,13 @@ async def accept_order(callback: CallbackQuery):
         except:
             pass
         
-        # Оновлюємо повідомлення в групі
         new_text = callback.message.text + f"\n\n✅ **Статус:** Прийняв(ла) — **{driver_name}**\n📞 Тел: `{phone}`"
         await callback.message.edit_text(text=new_text, reply_markup=None, parse_mode="Markdown")
-        await callback.answer("Ви успішно прийняли замовлення!")
+        await callback.answer("Ви прийняли замовлення!")
         
     except Exception as e:
         logging.error(f"Помилка прийняття: {e}")
-        await callback.answer("⚠️ Помилка обробки.", show_alert=True)
+        await callback.answer("⚠️ Помилка.", show_alert=True)
 
 async def main():
     logging.info("Бот запущено...")
