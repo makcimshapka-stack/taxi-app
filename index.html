@@ -25,7 +25,7 @@
   <div id="map"></div>
 
   <div class="controls">
-    <div class="hint">Натисніть на мапу, щоб вибрати точку А, потім точку Б, або введіть адреси вручну</div>
+    <div class="hint">Клікніть на мапу для вибору точок або введіть адреси вручну</div>
     <div class="input-group">
       <label for="from">Звідки:</label>
       <input type="text" id="from" placeholder="Введіть адресу або клікніть на мапу">
@@ -45,10 +45,10 @@
       tg.expand();
     }
 
-    // Ініціалізація мапи з центром у Кобеляках (відповідно до посилання Visicom)
+    // Ініціалізація карти з центром у Кобеляках (Visicom)
     const map = L.map('map').setView([49.14452, 34.19065], 14);
 
-    // Підключення тайлів карти Visicom Raster API
+    // Підключення шару тайлів Visicom Raster API
     L.tileLayer('https://tms.visicom.ua/3.0/planet/uk/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://visicom.ua/">Visicom</a>',
       maxZoom: 19
@@ -57,7 +57,7 @@
     let fromMarker = null;
     let toMarker = null;
 
-    // Клік по мапі для вибору точок
+    // Вибір точок кліком по мапі
     map.on('click', function(e) {
       const coords = e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
 
@@ -68,7 +68,6 @@
         toMarker = L.marker(e.latlng).addTo(map).bindPopup("Куди").openPopup();
         document.getElementById('to').value = "Координати: " + coords;
       } else {
-        // Якщо обидві точки вже є — скидаємо і ставимо нову "Звідки"
         map.removeLayer(fromMarker);
         map.removeLayer(toMarker);
         toMarker = null;
