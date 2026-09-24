@@ -1,14 +1,16 @@
 import os
 import json
 import logging
-from aiogram import Bot, Dispatcher, F, types
+from aiohttp import web
+from aiogram import Bot, Dispatcher, types
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, Message
 from aiogram.filters import Command
 
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("BOT_TOKEN")
-DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID") # Наприклад: "-1001234567890"
+DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID")  # ID чату водіїв (наприклад, -1001234567890)
+PORT = int(os.getenv("PORT", 8080))          # Порт, який виділяє Railway
 
 if not TOKEN:
     raise ValueError("Помилка: BOT_TOKEN не знайдено!")
@@ -16,12 +18,11 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Замініть посилання на ваше актуальне з GitHub Pages (можете залишити з вашою версією)
+# URL вашого сайту на GitHub Pages
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=106"
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    # Використовуємо тільки інлайн-кнопку для відкриття веб-додатка
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -39,49 +40,60 @@ async def cmd_start(message: Message):
         "Натисніть кнопку нижче, щоб відкрити карту та оформити замовлення:"
     )
     
-    # Видаляємо старі клавіатури, якщо вони лишилися в історії, і надсилаємо чисте повідомлення
     await message.answer(welcome_text, reply_markup=keyboard)
 
-@dp.message(F.web_app_data)
-async def handle_web_app_data(message: Message):
+# HTTP-сервер для приймання замовлень прямо з сайту
+async def handle_order(request):
     try:
-        data = json.loads(message.web_app_data.data)
+        data = await request.json()
+        user_id = data.get("user_id")
+        user_name = data.get("user_name", "Клієнт")
+        address_from = data.get("address_from", "Не вказано")
+        address_to = data.get("address_to", "Не вказано")
+
+        if not user_id:
+            return web.json_response({"status": "error", "message": "No user_id"}, status=400)
+
+        # 1. Повідомлення клієнту в особисті
+        client_text = (
+            "✅ **Ваше замовлення прийнято в роботу!**\n\n"
+            f"📍 **Звідки:** {address_from}\n"
+            f"🏁 **Куди:** {address_to}\n\n"
+            "Очікуйте, шукаємо вільне авто..."
+        )
+        await bot.send_message(chat_id=int(user_id), text=client_text, parse_mode="Markdown")
+
+        # 2. Повідомлення у групу водіїв
+        driver_text = (
+            "🚨 **НОВЕ ЗАМОВЛЕННЯ!** 🚨\n\n"
+            f"📍 **Звідки:** {address_from}\n"
+            f"🏁 **Куди:** {address_to}\n"
+            f"👤 **Клієнт:** {user_name} (ID: {user_id})"
+        )
         
-        if data.get("action") == "new_order":
-            address_from = data.get("address_from", "Не вказано")
-            address_to = data.get("address_to", "Не вказано")
-            user_name = message.from_user.first_name
-            
-            # Відповідь клієнту в особисті повідомлення
-            client_text = (
-                "✅ **Ваше замовлення прийнято в роботу!**\n\n"
-                f"📍 **Звідки:** {address_from}\n"
-                f"🏁 **Куди:** {address_to}\n\n"
-                "Очікуйте, шукаємо вільне авто..."
-            )
-            await message.answer(client_text, parse_mode="Markdown")
-            
-            # Повідомлення для групи водіїв
-            driver_text = (
-                "🚨 **НОВЕ ЗАМОВЛЕННЯ!** 🚨\n\n"
-                f"📍 **Звідки:** {address_from}\n"
-                f"🏁 **Куди:** {address_to}\n"
-                f"👤 **Клієнт:** {user_name}"
-            )
-            
-            # Відправляємо в групу водіїв, якщо вказано ID
-            if DRIVER_CHAT_ID:
-                await bot.send_message(chat_id=DRIVER_CHAT_ID, text=driver_text, parse_mode="Markdown")
-            else:
-                logging.warning("⚠️ DRIVER_CHAT_ID не налаштовано в змінних середовища Railway!")
-            
+        if DRIVER_CHAT_ID:
+            await bot.send_message(chat_id=DRIVER_CHAT_ID, text=driver_text, parse_mode="Markdown")
+
+        return web.json_response({"status": "ok"})
     except Exception as e:
-        logging.error(f"Помилка обробки даних з WebApp: {e}")
-        await message.answer("⚠️ Сталася помилка при замовленні. Спробуйте ще раз.")
+        logging.error(f"Помилка в HTTP обробнику: {e}")
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+async def web_server():
+    app = web.Application()
+    app.router.add_post('/api/order', handle_order)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', PORT)
+    await site.start()
+    logging.info(f"HTTP сервер запущено на порті {PORT}")
 
 async def main():
-    logging.info("Бот запущено...")
-    await dp.start_polling(bot)
+    # Запускаємо одночасно Telegram бота та веб-сервер
+    await asyncio.gather(
+        dp.start_polling(bot),
+        web_server()
+    )
 
 if __name__ == "__main__":
     import asyncio
