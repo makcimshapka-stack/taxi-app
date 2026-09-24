@@ -17,7 +17,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # УВАГА: Створіть на GitHub новий файл map.html або закиньте код туди ж
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/map.html"
+WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/taximap.html"
 
 user_phones = {}
 
