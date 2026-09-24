@@ -7,17 +7,19 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-        #map { width: 100%; height: 40vh; border: none; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh; background: #fff; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 8px; }
-        label { font-size: 12px; font-weight: bold; color: #444; display: block; margin-bottom: 3px; }
-        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 15px; outline: none; background: #fff; }
+        #map { width: 100%; height: 35vh; border: none; }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 65vh; background: #fff; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
+        .input-group { margin-bottom: 6px; }
+        label { font-size: 11px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
+        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
         input.active-field { border-color: #0366d6; background: #f0f7ff; }
-        .btn-group { display: flex; gap: 10px; margin-top: 8px; }
-        button { border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .quick-buttons { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+        .q-btn { background: #e1ecf4; color: #0366d6; border: none; padding: 5px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: bold; }
+        .btn-group { display: flex; gap: 8px; margin-top: 6px; }
+        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
         #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
-        .hint { font-size: 13px; color: #0366d6; text-align: center; margin-bottom: 6px; font-weight: bold; }
+        .hint { font-size: 12px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -27,16 +29,23 @@
 
     <div class="panel">
         <div>
-            <div class="hint" id="instruction">👇 Введіть вулицю та номер будинку</div>
+            <div class="hint" id="instruction">👇 Оберіть адресу або введіть вручну</div>
             
+            <div class="quick-buttons">
+                <button class="q-btn" onclick="setQuickAddress('Центр (Автостанція)')">Автостанція</button>
+                <button class="q-btn" onclick="setQuickAddress('Лікарня')">Лікарня</button>
+                <button class="q-btn" onclick="setQuickAddress('Ринкова площа')">Ринок</button>
+                <button class="q-btn" onclick="setQuickAddress('Вокзал')">Вокзал</button>
+            </div>
+
             <div class="input-group" onclick="setActiveField('from')">
-                <label>📍 Звідки їдемо (вулиця, орієнтир):</label>
-                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Наприклад: вул. Шевченка, 10">
+                <label>📍 Звідки їдемо (вулиця, будинок):</label>
+                <input type="text" id="from_address" class="active-field" value="Центр (Кобеляки)" placeholder="Введіть вулицю подачі">
             </div>
             
             <div class="input-group" onclick="setActiveField('to')">
-                <label>🏁 Куди їдемо (адреса призначення):</label>
-                <input type="text" id="to_address" placeholder="Наприклад: Лікарня / вокзал">
+                <label>🏁 Куди їдемо (призначення):</label>
+                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
             </div>
         </div>
 
@@ -60,6 +69,15 @@
                 document.getElementById('from_address').classList.add('active-field');
             } else {
                 document.getElementById('to_address').classList.add('active-field');
+            }
+        }
+
+        function setQuickAddress(address) {
+            if (activeField === 'from') {
+                document.getElementById('from_address').value = address;
+                setActiveField('to');
+            } else {
+                document.getElementById('to_address').value = address;
             }
         }
 
