@@ -46,7 +46,7 @@
                     <button type="button" class="q-btn" onclick="setFrom('Вокзал')">Вокзал</button>
                 </div>
                 <label>📍 Звідки забирати:</label>
-                <input type="text" id="from_address" placeholder="Введіть вулицю" value="Центр (Кобеляки)">
+                <input type="text" id="from_address" value="Центр (Кобеляки)">
             </div>
             
             <div class="input-group">
@@ -109,13 +109,12 @@
                 return;
             }
 
-            const orderData = {
-                address_from: fromVal || "Центр",
-                address_to: toVal
-            };
+            // Формуємо текст замовлення
+            const orderText = `🚖 Замовлення таксі:\n📍 Звідки: ${fromVal}\n🏁 Куди: ${toVal}`;
 
-            // Надсилаємо дані напряму в бота через офіційний метод і закриваємо міні-додаток
-            tg.sendData(JSON.stringify(orderData));
+            // Відкриваємо чат бота з цим текстом автоматично, закриваючи веб-додаток
+            window.open(`https://t.me/TaxiKobelyakyBot?text=${encodeURIComponent(orderText)}`, '_blank');
+            tg.close();
         }
     </script>
 </body>
