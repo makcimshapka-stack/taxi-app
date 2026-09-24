@@ -3,97 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Замовлення таксі</title>
+    <title>Вибір маршруту на мапі</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Підключаємо Leaflet CSS та JS для інтерактивної карти -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 15px; box-sizing: border-box; }
-        .container { max-width: 400px; margin: auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; margin-top: 0; font-size: 20px; }
-        .group { margin-bottom: 15px; }
-        label { font-weight: bold; font-size: 13px; color: #555; display: block; margin-bottom: 5px; }
-        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; box-sizing: border-box; outline: none; background: #fff; }
-        input:focus { border-color: #2ea44f; }
-        .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-        .preset-btn { background: #eef2f5; border: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; color: #0366d6; font-weight: bold; }
-        .preset-btn:active { background: #d0e1f9; }
-        .actions { display: flex; gap: 10px; margin-top: 20px; }
-        button.main-btn { flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        #orderBtn { background: #2ea44f; color: white; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
+        #map-container { width: 100%; height: 45vh; position: relative; }
+        #map { width: 100%; height: 100%; }
+        .map-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 32px; pointer-events: none; z-index: 1000; }
+        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 55vh; background: #fff; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); overflow-y: auto; }
+        .input-group { margin-bottom: 6px; }
+        label { font-size: 11px; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
+        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; background: #fff; }
+        .quick-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+        .q-btn { background: #e1ecf4; color: #0366d6; border: none; padding: 5px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: bold; }
+        .btn-group { display: flex; gap: 8px; margin-top: 6px; }
+        button { border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        #submitBtn { background: #2ea44f; color: white; }
         #cancelBtn { background: #d73a49; color: white; }
+        .hint { font-size: 11px; color: #0366d6; text-align: center; margin-bottom: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>🚖 Виклик таксі</h2>
-    
-    <div class="group">
-        <label>📍 Звідки забирати:</label>
-        <input type="text" id="fromInput" placeholder="Введіть адресу або оберіть нижче" value="Центр (Кобеляки)">
-        <div class="presets">
-            <button class="preset-btn" onclick="setFrom('Центр (Автостанція)', 49.1460, 34.1850)">Автостанція</button>
-            <button class="preset-btn" onclick="setFrom('Лікарня', 49.1410, 34.2000)">Лікарня</button>
-            <button class="preset-btn" onclick="setFrom('Ринок', 49.1450, 34.1910)">Ринок</button>
-            <button class="preset-btn" onclick="setFrom('Вокзал', 49.1320, 34.1780)">Вокзал</button>
+    <div id="map-container">
+        <div class="map-pin">📍</div>
+        <div id="map"></div>
+    </div>
+
+    <div class="panel">
+        <div>
+            <div class="hint">🗺 Рухайте мапу, щоб поставити мітку на місці посадки</div>
+            
+            <div class="quick-buttons">
+                <button class="q-btn" onclick="setPreset('Автостанція', 49.1460, 34.1850)">Автостанція</button>
+                <button class="q-btn" onclick="setPreset('Лікарня', 49.1410, 34.2000)">Лікарня</button>
+                <button class="q-btn" onclick="setPreset('Ринок', 49.1450, 34.1910)">Ринок</button>
+                <button class="q-btn" onclick="setPreset('Вокзал', 49.1320, 34.1780)">Вокзал</button>
+            </div>
+
+            <div class="input-group">
+                <label>📍 Звідки забирати:</label>
+                <input type="text" id="from_address" value="Центр (Кобеляки)" placeholder="Адреса або точка з мапи">
+            </div>
+            
+            <div class="input-group">
+                <label>🏁 Куди їдемо (призначення):</label>
+                <input type="text" id="to_address" placeholder="Введіть пункт призначення">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="cancelBtn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
+            <button id="submitBtn">Замовити таксі</button>
         </div>
     </div>
 
-    <div class="group">
-        <label>🏁 Куди їдемо (призначення):</label>
-        <input type="text" id="toInput" placeholder="Введіть куди їдемо">
-        <div class="presets">
-            <button class="preset-btn" onclick="setTo('АТБ')">АТБ</button>
-            <button class="preset-btn" onclick="setTo('Центр')">Центр</button>
-            <button class="preset-btn" onclick="setTo('Покровська 50')">Покровська 50</button>
-        </div>
-    </div>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-    <div class="actions">
-        <button id="cancelBtn" class="main-btn" onclick="window.Telegram.WebApp.close()">Скасувати</button>
-        <button id="orderBtn" class="main-btn" onclick="sendOrder()">Замовити</button>
-    </div>
-</div>
+        // Ініціалізація Leaflet карти (центр у Кобеляках)
+        const map = L.map('map', {zoomControl: false}).setView([49.1445, 34.1906], 15);
 
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
-    let selectedLat = 49.1445;
-    let selectedLng = 34.1906;
+        let currentLat = 49.1445;
+        let currentLng = 34.1906;
 
-    function setFrom(address, lat, lng) {
-        document.getElementById('fromInput').value = address;
-        if(lat && lng) {
-            selectedLat = lat;
-            selectedLng = lng;
-        }
-    }
+        // Зберігаємо координати центру карти під час пересування
+        map.on('move', () => {
+            const center = map.getCenter();
+            currentLat = center.lat;
+            currentLng = center.lng;
+        });
 
-    function setTo(address) {
-        document.getElementById('toInput').value = address;
-    }
-
-    function sendOrder() {
-        const from = document.getElementById('fromInput').value.trim();
-        const to = document.getElementById('toInput').value.trim();
-
-        if (!to) {
-            alert('Будь ласка, введіть куди ви їдете!');
-            return;
+        function setPreset(name, lat, lng) {
+            map.setView([lat, lng], 16);
+            document.getElementById('from_address').value = name;
+            currentLat = lat;
+            currentLng = lng;
         }
 
-        const data = {
-            action: "new_order",
-            address_from: from || "Центр (Кобеляки)",
-            address_to: to,
-            lat: selectedLat,
-            lng: selectedLng
-        };
+        document.getElementById("submitBtn").addEventListener("click", () => {
+            const from = document.getElementById("from_address").value.trim() || "Точка на мапі";
+            const to = document.getElementById("to_address").value.trim();
 
-        tg.sendData(JSON.stringify(data));
-        tg.close();
-    }
-</script>
+            if (!to) {
+                alert("Будь ласка, введіть пункт призначення!");
+                return;
+            }
 
+            const data = { 
+                action: "new_order",
+                address_from: from, 
+                address_to: to,
+                lat: currentLat,
+                lng: currentLng
+            };
+            
+            tg.sendData(JSON.stringify(data));
+            tg.close();
+        });
+    </script>
 </body>
 </html>
