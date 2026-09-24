@@ -1,20 +1,13 @@
 import asyncio
-import json
 import logging
 import sys
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
-# Ваш токен бота
 TOKEN = "8895482400:AAECLb1186EcGMi5laXwO3DYWayckFJ-dIk"
-
-# Посилання на ваш створений сайт на GitHub Pages (index.html)
 WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/"
-
-# ID чату водіїв (якщо потрібно пересилати замовлення в групу, впишіть сюди ID, наприклад: -1001234567890)
-# Якщо поки що не потрібно, залиште None
-DRIVERS_CHAT_ID = None
+DRIVERS_CHAT_ID = None # Сюди можна вписати ID групи водіїв, наприклад -100xxxxxxxxxx
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 bot = Bot(token=TOKEN)
@@ -22,7 +15,6 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message):
-    # Створюємо кнопку з веб-додатком (картою)
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -40,41 +32,30 @@ async def command_start_handler(message: Message):
         reply_markup=keyboard
     )
 
-# Обробник отримання даних з міні-додатка (Web App)
-@dp.message(F.web_app_data)
-async def web_app_order_handler(message: Message):
-    try:
-        # Розпаковуємо JSON, який прилетів з карти
-        data = json.loads(message.web_app_data.data)
-        address_from = data.get("address_from", "Центр")
-        address_to = data.get("address_to", "Не вказано")
-        user_name = message.from_user.full_name
-        user_phone = message.from_user.username or message.from_user.id
+# Обробник замовлення, яке надходить із сайту
+@dp.message(F.text.startswith("🚖 Замовлення таксі"))
+async def process_taxi_order(message: Message):
+    user_name = message.from_user.full_name
+    user_contact = f"@{message.from_user.username}" if message.from_user.username else f"ID: {message.from_user.id}"
 
-        # Формуємо текст замовлення для пасажира
-        client_text = (
-            f"✅ **Ваше замовлення прийнято!**\n\n"
-            f"📍 **Звідки:** {address_from}\n"
-            f"🏁 **Куди:** {address_to}\n\n"
-            f"Шукаємо для вас найближчого водія 🚗"
-        )
-        await message.answer(client_text, parse_mode="Markdown")
+    # Відправляємо підтвердження клієнту
+    await message.answer(
+        f"✅ **Ваше замовлення прийнято!**\n\n"
+        f"{message.text}\n\n"
+        f"Шукаємо для вас найближчого водія 🚗",
+        parse_mode="Markdown"
+    )
 
-        # Формуємо текст для водіїв
-        driver_text = (
-            f"🚖 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!**\n\n"
-            f"👤 **Клієнт:** {user_name} (@{user_phone})\n"
-            f"📍 **Звідки:** {address_from}\n"
-            f"🏁 **Куди:** {address_to}"
-        )
+    # Формуємо повідомлення для водіїв
+    driver_text = (
+        f"🚨 **НОВЕ ЗАМОВЛЕННЯ!**\n\n"
+        f"👤 **Клієнт:** {user_name} ({user_contact})\n"
+        f"{message.text}"
+    )
 
-        # Якщо вказано ID чату водіїв, відправляємо туди
-        if DRIVERS_CHAT_ID:
-            await bot.send_message(chat_id=DRIVERS_CHAT_ID, text=driver_text, parse_mode="Markdown")
-            
-    except Exception as e:
-        logging.error(f"Помилка обробки замовлення: {e}")
-        await message.answer("Сталася помилка при обробці замовлення. Спробуйте ще раз.")
+    # Якщо вказано ID чату водіїв, надсилаємо туди
+    if DRIVERS_CHAT_ID:
+        await bot.send_message(chat_id=DRIVERS_CHAT_ID, text=driver_text, parse_mode="Markdown")
 
 async def main():
     await dp.start_polling(bot)
