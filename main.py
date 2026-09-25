@@ -55,7 +55,6 @@ async def handle_web_app_data(message: Message):
         user_name = message.from_user.first_name
         user_id = message.from_user.id
         
-        # 1. Підтвердження клієнту
         client_text = (
             "✅ **Ваше замовлення прийнято в роботу!**\n\n"
             f"📍 **Звідки:** {address_from}\n"
@@ -65,14 +64,11 @@ async def handle_web_app_data(message: Message):
         )
         await message.answer(client_text, parse_mode="Markdown")
         
-        # Генеруємо посилання на навігацію (якщо є координати — веде точно на точку, якщо ні — за назвою адреси)
         if lat and lng:
             nav_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
         else:
-            # Якщо користувач вписав текст вручну, шукаємо за текстом + додаємо місто для точності
             nav_url = f"https://www.google.com/maps/search/?api=1&query={address_from}, Кобеляки"
 
-        # 2. Формуємо кнопки для водіїв (Прийняти, Відмовитись + Навігація)
         driver_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -111,12 +107,11 @@ async def handle_web_app_data(message: Message):
 async def handle_driver_action(callback: CallbackQuery):
     action, client_id = callback.data.split("_")
     driver_name = callback.from_user.first_name
+    driver_username = callback.from_user.username # Отримуємо username водія в Telegram
     
     if action == "accept":
         new_text = callback.message.text + f"\n\n✅ **Статус:** Замовлення прийняв водій **{driver_name}**"
         
-        # Залишаємо кнопку навігації зручною, а кнопки прийняття прибираємо
-        # Можна залишити тільки навігацію умовно або оновити клавіатуру
         try:
             await callback.message.edit_text(new_text, reply_markup=callback.message.reply_markup, parse_mode="Markdown")
         except Exception:
@@ -124,10 +119,23 @@ async def handle_driver_action(callback: CallbackQuery):
             
         await callback.answer(f"Ви прийняли замовлення!", show_alert=False)
         
+        # Визначаємо автомобіль та дані залежно від водія
+        car_info = ""
+        if driver_username == "suetolog_mak" or driver_name.lower().find("макс") != -1:
+            car_info = "🚗 **Автомобіль:** Honda (зелений)\n🔢 **Номер:** ВІ 8926 ЕР"
+        elif driver_username == "Artur_Grek4" or driver_name.lower().find("артур") != -1:
+            car_info = "🚗 **Автомобіль:** Renault (сірий)\n🔢 **Номер:** ВІ 1393 НР"
+        else:
+            car_info = f"🚗 **Водій:** {driver_name}"
+
         try:
             await bot.send_message(
                 chat_id=int(client_id), 
-                text=f"🚖 Водій **{driver_name}** прийняв ваше замовлення і виїжджає!", 
+                text=(
+                    f"🚖 **Водій знайшовся і виїжджає!**\n\n"
+                    f"{car_info}\n\n"
+                    "Очікуйте на автомобіль поруч із місцем посадки."
+                ), 
                 parse_mode="Markdown"
             )
         except Exception:
