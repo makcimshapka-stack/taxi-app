@@ -1,155 +1,137 @@
-import os
 import json
 import logging
-from aiogram import Bot, Dispatcher, F, types
-from aiogram.types import WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
-from aiogram.filters import Command
+import asyncio
+from aiogram import Bot, Dispatcher, types
+
+# Токен вашого основного бота (або змінна середовища з Railway)
+API_TOKEN = '8817022184:AAGD3M8scpb6U7Ndwa4N4RlO0jLj1PTpkw4'
+DRIVER_CHAT_ID = -1005044058539
+
+# Оновлений словник водіїв (картки, імена, ніки в ТГ та автомобілі)
+DRIVERS_INFO = {
+    "Макс": {
+        "card": "4874070013052004",
+        "car": "Chery Amulet (КЕ3389АК)"
+    },
+    "Артур": {
+        "card": "4441114417805692",
+        "car": "Renault"
+    },
+    "Artut": {
+        "card": "4441114417805692",
+        "car": "Renault"
+    },
+    "Валерій": {
+        "card": "4149629378242937",
+        "car": "Чорна Лада Гранта"
+    }
+}
 
 logging.basicConfig(level=logging.INFO)
-
-TOKEN = os.getenv("BOT_TOKEN")
-DRIVER_CHAT_ID = os.getenv("DRIVER_CHAT_ID")
-
-if not TOKEN:
-    raise ValueError("Помилка: BOT_TOKEN не знайдено!")
-
-bot = Bot(token=TOKEN)
+bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-WEB_APP_URL = "https://makcimshapka-stack.github.io/taxi-app/?v=106"
-
-@dp.message(Command("start"))
-async def cmd_start(message: Message):
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
+@dp.message(lambda message: message.text and message.text.startswith('/start'))
+async def send_welcome(message: types.Message):
+    markup = types.InlineKeyboardMarkup(
+        inline_keyboard=[
             [
-                KeyboardButton(
-                    text="🚗 Замовити таксі", 
-                    web_app=WebAppInfo(url=WEB_APP_URL)
+                types.InlineKeyboardButton(
+                    text="🚗 Замовити таксі (Кобеляки)",
+                    web_app=types.WebAppInfo(url="https://ваш-сайт.com/index.html")
                 )
             ]
-        ],
-        resize_keyboard=True,
-        is_persistent=True
+        ]
     )
-    
-    welcome_text = (
-        f"Вітаю, {message.from_user.first_name}! 👋\n\n"
-        "Це офіційний бот служби таксі в Кобеляках.\n"
-        "Натисніть кнопку **«🚗 Замовити таксі»** внизу екрана, щоб відкрити карту:"
+    await message.answer(
+        "👋 Вітаємо у службі таксі Кобеляки!\nНатисніть кнопку нижче, щоб відкрити карту та оформити замовлення:",
+        reply_markup=markup
     )
-    
-    await message.answer(welcome_text, reply_markup=keyboard)
 
-@dp.message(F.web_app_data)
-async def handle_web_app_data(message: Message):
+@dp.message(lambda message: message.web_app_data is not None)
+async def handle_web_app_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
         
-        address_from = data.get("address_from", "Центр (Кобеляки)")
-        address_to = data.get("address_to", "Не вказано")
-        phone_number = data.get("phone", "Не вказано")
-        lat = data.get("lat")
-        lng = data.get("lng")
-        
-        user_name = message.from_user.first_name
-        user_id = message.from_user.id
-        
-        client_text = (
-            "✅ **Ваше замовлення прийнято в роботу!**\n\n"
+        address_from = data.get('address_from', 'Не вказано')
+        address_to = data.get('address_to', 'Не вказано')
+        phone = data.get('phone', 'Не вказано')
+        payment_method = data.get('payment_method', 'Готівка')
+        price = data.get('price', 100)
+        price_desc = data.get('price_desc', '')
+
+        await message.answer("⏳ **Очікуйте, передаємо замовлення водіям...**", parse_mode="Markdown")
+
+        order_text = (
+            f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
             f"📍 **Звідки:** {address_from}\n"
             f"🏁 **Куди:** {address_to}\n"
-            f"📞 **Телефон:** {phone_number}\n\n"
-            "⏳ Очікуйте, шукаємо вільне авто..."
+            f"📞 **Телефон клієнта:** `{phone}`\n"
+            f"💳 **Оплата:** {payment_method}\n"
+            f"💰 **Вартість:** {price} грн _{price_desc}_\n"
         )
-        await message.answer(client_text, parse_mode="Markdown")
-        
-        if lat and lng:
-            nav_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
-        else:
-            nav_url = f"https://www.google.com/maps/search/?api=1&query={address_from}, Кобеляки"
 
-        driver_keyboard = InlineKeyboardMarkup(
+        callback_data_str = f"accept_{message.from_user.id}_{price}_{payment_method}"
+
+        markup = types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="🗺️ Навігація (Google Maps)", url=nav_url)
-                ],
-                [
-                    InlineKeyboardButton(text="✅ Прийняти", callback_data=f"accept_{user_id}"),
-                    InlineKeyboardButton(text="❌ Відмовитись", callback_data=f"cancel_{user_id}")
-                ]
+                [types.InlineKeyboardButton(text="🚗 Взяти замовлення", callback_data=callback_data_str)]
             ]
         )
-        
-        driver_text = (
-            "🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
-            f"📍 **Звідки:** {address_from}\n"
-            f"🏁 **Куди:** {address_to}\n"
-            f"📞 **Телефон:** `{phone_number}`\n"
-            f"👤 **Клієнт:** {user_name} (ID: {user_id})"
-        )
-        
-        if DRIVER_CHAT_ID:
-            await bot.send_message(
-                chat_id=DRIVER_CHAT_ID, 
-                text=driver_text, 
-                reply_markup=driver_keyboard, 
-                parse_mode="Markdown"
-            )
-        else:
-            logging.warning("⚠️ DRIVER_CHAT_ID не налаштовано!")
-            
+
+        await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
+
     except Exception as e:
-        logging.error(f"Помилка обробки даних з WebApp: {e}")
-        await message.answer("⚠️ Сталася помилка при замовленні. Спробуйте ще раз.")
+        logging.error(f"Помилка відправки замовлення: {e}")
+        await message.answer("❌ Сталася помилка при оформленні замовлення.")
 
-@dp.callback_query(F.data.startswith("accept_") | F.data.startswith("cancel_"))
-async def handle_driver_action(callback: CallbackQuery):
-    action, client_id = callback.data.split("_")
-    driver_name = callback.from_user.first_name
-    driver_username = callback.from_user.username # Отримуємо username водія в Telegram
-    
-    if action == "accept":
-        new_text = callback.message.text + f"\n\n✅ **Статус:** Замовлення прийняв водій **{driver_name}**"
+@dp.callback_query(lambda c: c.data.startswith('accept_'))
+async def process_accept(callback: types.CallbackQuery):
+    try:
+        parts = callback.data.split('_')
+        client_id = int(parts[1])
+        price = parts[2]
+        payment_method = parts[3]
         
-        try:
-            await callback.message.edit_text(new_text, reply_markup=callback.message.reply_markup, parse_mode="Markdown")
-        except Exception:
-            pass
-            
-        await callback.answer(f"Ви прийняли замовлення!", show_alert=False)
+        driver_name = callback.from_user.first_name or "Водій"
         
-        # Визначаємо автомобіль та дані залежно від водія
-        car_info = ""
-        if driver_username == "suetolog_mak" or driver_name.lower().find("макс") != -1:
-            car_info = "🚗 **Автомобіль:** Honda (зелений)\n🔢 **Номер:** ВІ 8926 ЕР"
-        elif driver_username == "Artur_Grek4" or driver_name.lower().find("артур") != -1:
-            car_info = "🚗 **Автомобіль:** Renault (сірий)\n🔢 **Номер:** ВІ 1393 НР"
-        else:
-            car_info = f"🚗 **Водій:** {driver_name}"
+        # Отримуємо дані водія або беремо Макса за замовчуванням
+        driver_data = DRIVERS_INFO.get(driver_name, DRIVERS_INFO["Макс"])
+        card_num = driver_data["card"]
+        car_info = driver_data["car"]
 
-        try:
-            await bot.send_message(
-                chat_id=int(client_id), 
-                text=(
-                    f"🚖 **Водій знайшовся і виїжджає!**\n\n"
-                    f"{car_info}\n\n"
-                    "Очікуйте на автомобіль поруч із місцем посадки."
-                ), 
-                parse_mode="Markdown"
-            )
-        except Exception:
-            pass
-            
-    elif action == "cancel":
-        new_text = callback.message.text + f"\n\n❌ **Статус:** Водій **{driver_name}** відмовився від замовлення."
-        await callback.message.edit_text(new_text, parse_mode="Markdown")
-        await callback.answer(f"Ви відмовилися від замовлення.", show_alert=False)
+        # Перевіряємо, чи замовлення вже хтось не взяв раніше
+        if "✅ **Замовлення прийняв" in callback.message.text:
+            await callback.answer("⚠️ Це замовлення вже хтось зайняв!", show_alert=True)
+            return
+
+        # 1. Оновлюємо повідомлення у водійському чаті (зникає кнопка, пишеться хто взяв)
+        updated_driver_text = (
+            callback.message.text + 
+            f"\n\n✅ **Замовлення прийняв(ла): {driver_name}**\n"
+            f"🚗 **Авто:** {car_info}"
+        )
+        await callback.message.edit_text(updated_driver_text, reply_markup=None, parse_mode="Markdown")
+
+        # 2. Формуємо підтвердження клієнту
+        client_reply = (
+            f"✅ **Ваше замовлення прийнято в роботу!**\n\n"
+            f"🚗 **Водій:** {driver_name} ({car_info})\n"
+            f"💰 **Сума до сплати:** {price} грн ({payment_method})"
+        )
+        if payment_method == 'Картка':
+            client_reply += f"\n\n💳 **Номер картки для оплати ({driver_name}):**\n`{card_num}`"
+
+        await bot.send_message(client_id, client_reply, parse_mode="Markdown")
+        await callback.answer("Ви успішно прийняли замовлення!")
+
+    except Exception as e:
+        logging.error(f"Помилка обробки натискання: {e}")
+        await callback.answer("❌ Помилка при прийнятті замовлення.", show_alert=True)
 
 async def main():
-    logging.info("Бот запущено...")
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
-if __name__ == "__main__":
-    import asyncio
+if __name__ == '__main__':
     asyncio.run(main())
