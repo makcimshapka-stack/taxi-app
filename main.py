@@ -3,8 +3,8 @@ import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types
 
-API_TOKEN = 8895482400:AAH52phykj637HPNBycVjD4ZxFKGZAuhp04
-DRIVER_CHAT_ID = -5357703122
+API_TOKEN = '8895482400:AAH52phykj637HPNBycVjD4ZxFKGZAuhp04'
+DRIVER_CHAT_ID = -5044058539
 
 DRIVERS_INFO = {
     "Макс": {
@@ -77,7 +77,6 @@ async def handle_web_app_data(message: types.Message):
             ]
         )
 
-        # Пробуємо надіслати і виводимо помилку в логи, якщо вона є
         try:
             await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
             logging.info("✅ Замовлення успішно відправлено у чат водіїв!")
