@@ -58,8 +58,10 @@ async def handle_web_app_data(message: types.Message):
         price = data.get('price', 100)
         price_desc = data.get('price_desc', '')
 
-        await message.answer("⏳ **Очікуйте, передаємо замовлення водіям...**", parse_mode="Markdown")
+        # 1. Повідомляємо клієнту, що замовлення прийняте в обробку
+        await message.answer("⏳ **Ваше замовлення прийнято! Шукаємо вільне авто...**", parse_mode="Markdown")
 
+        # 2. Формуємо текст для водійського чату
         order_text = (
             f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
             f"📍 **Звідки:** {address_from}\n"
@@ -69,7 +71,6 @@ async def handle_web_app_data(message: types.Message):
             f"💰 **Вартість:** {price} грн _{price_desc}_\n"
         )
 
-        # Передаємо клієнтський ID та ціну безпечно через розділювач
         callback_data_str = f"accept_{message.from_user.id}_{price}_{payment_method}"
 
         markup = types.InlineKeyboardMarkup(
@@ -78,6 +79,7 @@ async def handle_web_app_data(message: types.Message):
             ]
         )
 
+        # 3. ВІДПРАВЛЯЄМ ЗАМОВЛЕННЯ У ЧАТ ВОДІЇВ
         await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
         logging.info("✅ Замовлення успішно відправлено у чат водіїв!")
 
