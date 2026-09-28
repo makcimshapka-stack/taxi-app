@@ -69,6 +69,7 @@ async def handle_web_app_data(message: types.Message):
             f"💰 **Вартість:** {price} грн _{price_desc}_\n"
         )
 
+        # Передаємо клієнтський ID та ціну безпечно через розділювач
         callback_data_str = f"accept_{message.from_user.id}_{price}_{payment_method}"
 
         markup = types.InlineKeyboardMarkup(
@@ -77,18 +78,14 @@ async def handle_web_app_data(message: types.Message):
             ]
         )
 
-        try:
-            await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
-            logging.info("✅ Замовлення успішно відправлено у чат водіїв!")
-        except Exception as send_err:
-            logging.error(f"❌ ПОМИЛКА Telegram при відправці водіям: {send_err}")
-            await message.answer(f"⚠️ Помилка зв'язку з водіями: {send_err}")
+        await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
+        logging.info("✅ Замовлення успішно відправлено у чат водіїв!")
 
     except Exception as e:
         logging.error(f"Помилка обробки даних WebApp: {e}")
         await message.answer("❌ Сталася помилка при оформленні замовлення.")
 
-@dp.callback_query(lambda c: c.data.startswith('accept_'))
+@dp.callback_query(lambda c: c.data and c.data.startswith('accept_'))
 async def process_accept(callback: types.CallbackQuery):
     try:
         parts = callback.data.split('_')
@@ -101,10 +98,12 @@ async def process_accept(callback: types.CallbackQuery):
         card_num = driver_data["card"]
         car_info = driver_data["car"]
 
+        # Перевірка, чи замовлення вже зайняте
         if "✅ **Замовлення прийняв" in callback.message.text:
             await callback.answer("⚠️ Це замовлення вже хтось зайняв!", show_alert=True)
             return
 
+        # 1. Оновлюємо повідомлення у водійському чаті
         updated_driver_text = (
             callback.message.text + 
             f"\n\n✅ **Замовлення прийняв(ла): {driver_name}**\n"
@@ -112,6 +111,7 @@ async def process_accept(callback: types.CallbackQuery):
         )
         await callback.message.edit_text(updated_driver_text, reply_markup=None, parse_mode="Markdown")
 
+        # 2. Надсилаємо сповіщення клієнту
         client_reply = (
             f"✅ **Ваше замовлення прийнято в роботу!**\n\n"
             f"🚗 **Водій:** {driver_name} ({car_info})\n"
