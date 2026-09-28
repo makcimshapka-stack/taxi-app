@@ -3,11 +3,9 @@ import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types
 
-# Токен вашого основного бота (або змінна середовища з Railway)
 API_TOKEN = '8817022184:AAGD3M8scpb6U7Ndwa4N4RlO0jLj1PTpkw4'
-DRIVER_CHAT_ID = -5044058539
+DRIVER_CHAT_ID = -1005044058539
 
-# Оновлений словник водіїв (картки, імена, ніки в ТГ та автомобілі)
 DRIVERS_INFO = {
     "Макс": {
         "card": "4874070013052004",
@@ -79,10 +77,16 @@ async def handle_web_app_data(message: types.Message):
             ]
         )
 
-        await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
+        # Пробуємо надіслати і виводимо помилку в логи, якщо вона є
+        try:
+            await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
+            logging.info("✅ Замовлення успішно відправлено у чат водіїв!")
+        except Exception as send_err:
+            logging.error(f"❌ ПОМИЛКА Telegram при відправці водіям: {send_err}")
+            await message.answer(f"⚠️ Помилка зв'язку з водіями: {send_err}")
 
     except Exception as e:
-        logging.error(f"Помилка відправки замовлення: {e}")
+        logging.error(f"Помилка обробки даних WebApp: {e}")
         await message.answer("❌ Сталася помилка при оформленні замовлення.")
 
 @dp.callback_query(lambda c: c.data.startswith('accept_'))
@@ -94,18 +98,14 @@ async def process_accept(callback: types.CallbackQuery):
         payment_method = parts[3]
         
         driver_name = callback.from_user.first_name or "Водій"
-        
-        # Отримуємо дані водія або беремо Макса за замовчуванням
         driver_data = DRIVERS_INFO.get(driver_name, DRIVERS_INFO["Макс"])
         card_num = driver_data["card"]
         car_info = driver_data["car"]
 
-        # Перевіряємо, чи замовлення вже хтось не взяв раніше
         if "✅ **Замовлення прийняв" in callback.message.text:
             await callback.answer("⚠️ Це замовлення вже хтось зайняв!", show_alert=True)
             return
 
-        # 1. Оновлюємо повідомлення у водійському чаті (зникає кнопка, пишеться хто взяв)
         updated_driver_text = (
             callback.message.text + 
             f"\n\n✅ **Замовлення прийняв(ла): {driver_name}**\n"
@@ -113,7 +113,6 @@ async def process_accept(callback: types.CallbackQuery):
         )
         await callback.message.edit_text(updated_driver_text, reply_markup=None, parse_mode="Markdown")
 
-        # 2. Формуємо підтвердження клієнту
         client_reply = (
             f"✅ **Ваше замовлення прийнято в роботу!**\n\n"
             f"🚗 **Водій:** {driver_name} ({car_info})\n"
@@ -131,6 +130,7 @@ async def process_accept(callback: types.CallbackQuery):
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
+    print("Бот успішно запущено і готовий до роботи!")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
