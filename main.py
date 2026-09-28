@@ -6,23 +6,32 @@ from aiogram import Bot, Dispatcher, types
 API_TOKEN = '8895482400:AAH52phykj637HPNBycVjD4ZxFKGZAuhp04'
 DRIVER_CHAT_ID = -5357703122
 
-# База даних водіїв (можна додати сюди Telegram ID або різні варіанти написання імені)
+# Чіткий словник із варіантами імен у Telegram
 DRIVERS_INFO = {
     "Макс": {
         "card": "4874070013052004",
-        "car": "Chery Amulet (КЕ3389АК)"
-    },
-    "Троценко": {
-        "card": "4149629378242937",
-        "car": "Лада Гранта"
-    },
-    "Валерій": {
-        "card": "4149629378242937",
-        "car": "Лада Гранта"
+        "car": "Chery Amulet (КЕ3389АК)",
+        "display": "Макс"
     },
     "Артур": {
         "card": "4441114417805692",
-        "car": "Renault"
+        "car": "Renault",
+        "display": "Артур"
+    },
+    "Artut": {
+        "card": "4441114417805692",
+        "car": "Renault",
+        "display": "Артур"
+    },
+    "Троценко": {
+        "card": "4149629378242937",
+        "car": "Лада Гранта",
+        "display": "Троценко"
+    },
+    "Валерій": {
+        "card": "4149629378242937",
+        "car": "Лада Гранта",
+        "display": "Валерій"
     }
 }
 
@@ -59,10 +68,8 @@ async def handle_web_app_data(message: types.Message):
         price = data.get('price', 100)
         price_desc = data.get('price_desc', '')
 
-        # 1. Повідомляємо клієнту, що замовлення прийняте в обробку
         await message.answer("⏳ **Ваше замовлення прийнято! Шукаємо вільне авто...**", parse_mode="Markdown")
 
-        # 2. Формуємо текст для водійського чату
         order_text = (
             f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
             f"📍 **Звідки:** {address_from}\n"
@@ -80,7 +87,6 @@ async def handle_web_app_data(message: types.Message):
             ]
         )
 
-        # 3. ВІДПРАВЛЯЄМ ЗАМОВЛЕННЯ У ЧАТ ВОДІЇВ
         await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
         logging.info("✅ Замовлення успішно відправлено у чат водіїв!")
 
@@ -96,34 +102,31 @@ async def process_accept(callback: types.CallbackQuery):
         price = parts[2]
         payment_method = parts[3]
         
-        # Отримуємо ім'я та прізвище водія з Telegram
         first_name = callback.from_user.first_name or ""
         last_name = callback.from_user.last_name or ""
-        full_user_name = f"{first_name} {last_name}".strip()
 
-        # Шукаємо водія у словнику за іменем або прізвищем
+        # Шукаємо відповідність у словнику
         driver_data = None
-        driver_display_name = first_name or "Водій"
+        driver_display_name = first_name
 
         for key, data in DRIVERS_INFO.items():
             if key.lower() in first_name.lower() or key.lower() in last_name.lower():
                 driver_data = data
-                driver_display_name = key
+                driver_display_name = data["display"]
                 break
         
-        # Якщо не знайшли по ключах, беремо стандартну машину або записуємо ім'я як є
+        # Якщо водія не знайдено взагалі, беремо дефолтні значення
         if not driver_data:
             driver_data = {"card": "4149629378242937", "car": "Лада Гранта"}
+            driver_display_name = first_name or "Водій"
 
         card_num = driver_data["card"]
         car_info = driver_data["car"]
 
-        # Перевірка, чи замовлення вже зайняте
         if "✅ **Замовлення прийняв" in callback.message.text:
             await callback.answer("⚠️ Це замовлення вже хтось зайняв!", show_alert=True)
             return
 
-        # 1. Оновлюємо повідомлення у водійському чаті
         updated_driver_text = (
             callback.message.text + 
             f"\n\n✅ **Замовлення прийняв(ла): {driver_display_name}**\n"
@@ -131,7 +134,6 @@ async def process_accept(callback: types.CallbackQuery):
         )
         await callback.message.edit_text(updated_driver_text, reply_markup=None, parse_mode="Markdown")
 
-        # 2. Надсилаємо сповіщення клієнту
         client_reply = (
             f"✅ **Ваше замовлення прийнято в роботу!**\n\n"
             f"🚗 **Водій:** {driver_display_name} ({car_info})\n"
