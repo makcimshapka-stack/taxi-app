@@ -6,22 +6,23 @@ from aiogram import Bot, Dispatcher, types
 API_TOKEN = '8895482400:AAH52phykj637HPNBycVjD4ZxFKGZAuhp04'
 DRIVER_CHAT_ID = -5357703122
 
+# База даних водіїв (можна додати сюди Telegram ID або різні варіанти написання імені)
 DRIVERS_INFO = {
     "Макс": {
         "card": "4874070013052004",
         "car": "Chery Amulet (КЕ3389АК)"
     },
-    "Артур": {
-        "card": "4441114417805692",
-        "car": "Renault"
-    },
-    "Artut": {
-        "card": "4441114417805692",
-        "car": "Renault"
+    "Троценко": {
+        "card": "4149629378242937",
+        "car": "Лада Гранта"
     },
     "Валерій": {
         "card": "4149629378242937",
-        "car": "Чорна Лада Гранта"
+        "car": "Лада Гранта"
+    },
+    "Артур": {
+        "card": "4441114417805692",
+        "car": "Renault"
     }
 }
 
@@ -95,8 +96,25 @@ async def process_accept(callback: types.CallbackQuery):
         price = parts[2]
         payment_method = parts[3]
         
-        driver_name = callback.from_user.first_name or "Водій"
-        driver_data = DRIVERS_INFO.get(driver_name, DRIVERS_INFO["Макс"])
+        # Отримуємо ім'я та прізвище водія з Telegram
+        first_name = callback.from_user.first_name or ""
+        last_name = callback.from_user.last_name or ""
+        full_user_name = f"{first_name} {last_name}".strip()
+
+        # Шукаємо водія у словнику за іменем або прізвищем
+        driver_data = None
+        driver_display_name = first_name or "Водій"
+
+        for key, data in DRIVERS_INFO.items():
+            if key.lower() in first_name.lower() or key.lower() in last_name.lower():
+                driver_data = data
+                driver_display_name = key
+                break
+        
+        # Якщо не знайшли по ключах, беремо стандартну машину або записуємо ім'я як є
+        if not driver_data:
+            driver_data = {"card": "4149629378242937", "car": "Лада Гранта"}
+
         card_num = driver_data["card"]
         car_info = driver_data["car"]
 
@@ -108,7 +126,7 @@ async def process_accept(callback: types.CallbackQuery):
         # 1. Оновлюємо повідомлення у водійському чаті
         updated_driver_text = (
             callback.message.text + 
-            f"\n\n✅ **Замовлення прийняв(ла): {driver_name}**\n"
+            f"\n\n✅ **Замовлення прийняв(ла): {driver_display_name}**\n"
             f"🚗 **Авто:** {car_info}"
         )
         await callback.message.edit_text(updated_driver_text, reply_markup=None, parse_mode="Markdown")
@@ -116,11 +134,11 @@ async def process_accept(callback: types.CallbackQuery):
         # 2. Надсилаємо сповіщення клієнту
         client_reply = (
             f"✅ **Ваше замовлення прийнято в роботу!**\n\n"
-            f"🚗 **Водій:** {driver_name} ({car_info})\n"
+            f"🚗 **Водій:** {driver_display_name} ({car_info})\n"
             f"💰 **Сума до сплати:** {price} грн ({payment_method})"
         )
         if payment_method == 'Картка':
-            client_reply += f"\n\n💳 **Номер картки для оплати ({driver_name}):**\n`{card_num}`"
+            client_reply += f"\n\n💳 **Номер картки для оплати ({driver_display_name}):**\n`{card_num}`"
 
         await bot.send_message(client_id, client_reply, parse_mode="Markdown")
         await callback.answer("Ви успішно прийняли замовлення!")
