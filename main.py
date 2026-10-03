@@ -6,7 +6,9 @@ from aiogram import Bot, Dispatcher, types
 API_TOKEN = '8895482400:AAH52phykj637HPNBycVjD4ZxFKGZAuhp04'
 DRIVER_CHAT_ID = -5357703122
 
-# Чіткий словник із варіантами імен у Telegram
+# Посилання на ваш сайт із GitHub Pages
+WEB_APP_URL = "https://maksimshapka-stack.github.io/taxi-app/"
+
 DRIVERS_INFO = {
     "Макс": {
         "card": "4874070013052004",
@@ -46,7 +48,7 @@ async def send_welcome(message: types.Message):
             [
                 types.InlineKeyboardButton(
                     text="🚗 Замовити таксі (Кобеляки)",
-                    web_app=types.WebAppInfo(url="https://ваш-сайт.com/index.html")
+                    web_app=types.WebAppInfo(url=WEB_APP_URL)
                 )
             ]
         ]
@@ -105,7 +107,6 @@ async def process_accept(callback: types.CallbackQuery):
         first_name = callback.from_user.first_name or ""
         last_name = callback.from_user.last_name or ""
 
-        # Шукаємо відповідність у словнику
         driver_data = None
         driver_display_name = first_name
 
@@ -115,7 +116,6 @@ async def process_accept(callback: types.CallbackQuery):
                 driver_display_name = data["display"]
                 break
         
-        # Якщо водія не знайдено взагалі, беремо дефолтні значення
         if not driver_data:
             driver_data = {"card": "4149629378242937", "car": "Лада Гранта"}
             driver_display_name = first_name or "Водій"
