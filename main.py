@@ -6,9 +6,6 @@ from aiogram import Bot, Dispatcher, types
 API_TOKEN = '8895482400:AAH52phykj637HPNBycVjD4ZxFKGZAuhp04'
 DRIVER_CHAT_ID = -5357703122
 
-# Посилання на ваш файл із картами та додатком
-WEB_APP_URL = "https://maksimshapka-stack.github.io/taxi-app/map2.html"
-
 DRIVERS_INFO = {
     "Макс": {
         "card": "4874070013052004",
@@ -43,19 +40,9 @@ dp = Dispatcher()
 
 @dp.message(lambda message: message.text and message.text.startswith('/start'))
 async def send_welcome(message: types.Message):
-    markup = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(
-                    text="🚗 Замовити таксі (Кобеляки)",
-                    web_app=types.WebAppInfo(url=WEB_APP_URL)
-                )
-            ]
-        ]
-    )
     await message.answer(
-        "👋 Вітаємо у службі таксі Кобеляки!\nНатисніть кнопку нижче, щоб відкрити карту та оформити замовлення:",
-        reply_markup=markup
+        "👋 Вітаємо у службі таксі Кобеляки!\n\nДля оформлення замовлення натисніть кнопку **«Замовити таксі»** внизу екрана.",
+        parse_mode="Markdown"
     )
 
 @dp.message(lambda message: message.web_app_data is not None)
