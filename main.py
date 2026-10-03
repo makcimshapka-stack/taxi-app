@@ -6,8 +6,8 @@ from aiogram import Bot, Dispatcher, types
 API_TOKEN = '8895482400:AAH52phykj637HPNBycVjD4ZxFKGZAuhp04'
 DRIVER_CHAT_ID = -5357703122
 
-# Посилання на ваш сайт із GitHub Pages
-WEB_APP_URL = "https://maksimshapka-stack.github.io/taxi-app/"
+# Посилання на ваш файл із картами та додатком
+WEB_APP_URL = "https://maksimshapka-stack.github.io/taxi-app/map2.html"
 
 DRIVERS_INFO = {
     "Макс": {
