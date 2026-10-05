@@ -241,15 +241,12 @@
                 return;
             }
 
-            let orderData = {
-                phone: phone,
-                address_from: address_from,
-                address_to: address_to,
-                payment_method: payment_method
-            };
+            // Формуємо текст замовлення через посилання на бота
+            let orderText = `📍 Звідки: ${encodeURIComponent(address_from)}%0A🏁 Куди: ${encodeURIComponent(address_to)}%0A📞 Телефон: ${encodeURIComponent(phone)}%0A💳 Оплата: ${encodeURIComponent(payment_method)}`;
 
             try {
-                tg.sendData(JSON.stringify(orderData));
+                tg.openTelegramLink(`https://t.me/TaxikobelyakyBot?start=order_${orderText}`);
+                tg.close();
             } catch (err) {
                 alert("Помилка відправки: " + err.message);
             }
