@@ -21,34 +21,34 @@
         }
         #map {
             width: 100%;
-            height: 45vh;
+            height: 42vh;
             flex-shrink: 0;
         }
         .form-container {
             flex-grow: 1;
             background: var(--tg-theme-bg-color, #fff);
-            padding: 15px;
+            padding: 12px 15px;
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
             box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
         }
         label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--tg-theme-hint-color, #666);
         }
         input, select {
             width: 100%;
-            padding: 10px 12px;
+            padding: 9px 12px;
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 14px;
@@ -67,9 +67,9 @@
             background-color: var(--tg-theme-button-color, #2ea6ff);
             color: var(--tg-theme-button-text-color, #fff);
             border: none;
-            padding: 10px 14px;
+            padding: 9px 12px;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             white-space: nowrap;
@@ -78,14 +78,14 @@
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 14px;
+            padding: 13px;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
             text-align: center;
             margin-top: auto;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .submit-btn:active {
             background-color: #218838;
@@ -127,7 +127,7 @@
                 </select>
             </div>
             <div class="input-group" style="flex: 1;">
-                <label>💰 Орієнтовна ціна (грн)</label>
+                <label>💰 Ціна (грн)</label>
                 <input type="number" id="price" value="100">
             </div>
         </div>
@@ -141,6 +141,7 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
+        // Ініціалізація карти Кобеляки
         let map = L.map('map').setView([49.1435, 34.2045], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -150,9 +151,16 @@
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
+        // Оновлення координат при перетягуванні маркера
         marker.on('dragend', function(e) {
             let pos = marker.getLatLng();
             getAddress(pos.lat, pos.lng, 'address_to');
+        });
+
+        // Також робимо клік по карті зручним: клік пересуває маркер у те місце
+        map.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            getAddress(e.latlng.lat, e.latlng.lng, 'address_to');
         });
 
         function getAddress(lat, lon, elementId) {
@@ -184,20 +192,27 @@
         function submitOrder() {
             let phone = document.getElementById('phone').value.trim();
             let address_from = document.getElementById('address_from').value.trim();
-            let address_to = document.getElementById('address_to').value.trim();
+            let address_to = document.getElementById('address_to'].value.trim() || "Центр, Кобеляки";
             let payment_method = document.getElementById('payment_method').value;
             let price = document.getElementById('price').value;
 
+            if (!phone || phone.length < 9) {
+                alert("Будь ласка, введіть номер телефону!");
+                return;
+            }
+
             let orderData = {
                 phone: phone,
-                address_from: address_from,
+                address_from: address_from || "Центр",
                 address_to: address_to,
                 payment_method: payment_method,
                 price: price,
                 price_desc: "(тариф Кобеляки)"
             };
 
+            // Передаємо дані у бота і закриваємо WebApp
             tg.sendData(JSON.stringify(orderData));
+            tg.close();
         }
     </script>
 </body>
