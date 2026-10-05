@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Замовлення таксі Кобеляки</title>
     <!-- Підключаємо Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -21,13 +21,13 @@
         }
         #map {
             width: 100%;
-            height: 40vh;
+            height: 38vh;
             flex-shrink: 0;
         }
         .form-container {
             flex-grow: 1;
             background: var(--tg-theme-bg-color, #fff);
-            padding: 12px 15px;
+            padding: 10px 15px;
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
             box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
@@ -39,7 +39,7 @@
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 2px;
         }
         label {
             font-size: 11px;
@@ -48,7 +48,7 @@
         }
         input, select {
             width: 100%;
-            padding: 9px 12px;
+            padding: 8px 10px;
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 14px;
@@ -67,7 +67,7 @@
             background-color: var(--tg-theme-button-color, #2ea6ff);
             color: var(--tg-theme-button-text-color, #fff);
             border: none;
-            padding: 9px 12px;
+            padding: 8px 12px;
             border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
@@ -78,9 +78,9 @@
             background-color: #e0e0e0;
             color: #333;
             border: none;
-            padding: 10px;
+            padding: 8px;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             text-align: center;
@@ -97,6 +97,8 @@
             text-align: center;
             margin-top: auto;
             margin-bottom: 5px;
+            width: 100%;
+            -webkit-tap-highlight-color: transparent;
         }
         .submit-btn:active {
             background-color: #218838;
@@ -134,124 +136,4 @@
         <div class="input-group">
             <label>💳 Оплата</label>
             <select id="payment_method">
-                <option value="Готівка">Готівка</option>
-                <option value="Картка">Картка</option>
-            </select>
-        </div>
-
-        <button class="submit-btn" id="submitOrderBtn">Підтвердити замовлення</button>
-    </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
-
-        let activeField = 'to';
-
-        let map = L.map('map').setView([49.1435, 34.2045], 14);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
-
-        marker.on('dragend', function(e) {
-            let pos = marker.getLatLng();
-            updateAddress(pos.lat, pos.lng);
-        });
-
-        map.on('click', function(e) {
-            marker.setLatLng(e.latlng);
-            updateAddress(e.latlng.lat, e.latlng.lng);
-        });
-
-        function updateAddress(lat, lon) {
-            let elementId = (activeField === 'from') ? 'address_from' : 'address_to';
-            getAddress(lat, lon, elementId);
-        }
-
-        function getAddress(lat, lon, elementId) {
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
-                headers: { 'Accept-Language': 'uk' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data && data.display_name) {
-                    let parts = data.display_name.split(',');
-                    let shortName = parts.slice(0, 3).join(',');
-                    document.getElementById(elementId).value = shortName;
-                }
-            }).catch(err => console.log(err));
-        }
-
-        function setMarkerFrom() {
-            activeField = 'from';
-            let center = map.getCenter();
-            marker.setLatLng(center);
-            getAddress(center.lat, center.lng, 'address_from');
-        }
-
-        function setMarkerTo() {
-            activeField = 'to';
-            let center = map.getCenter();
-            marker.setLatLng(center);
-            getAddress(center.lat, center.lng, 'address_to');
-        }
-
-        function locateUser() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    let lat = position.coords.latitude;
-                    let lon = position.coords.longitude;
-                    map.setView([lat, lon], 16);
-                    marker.setLatLng([lat, lon]);
-                    activeField = 'from';
-                    getAddress(lat, lon, 'address_from');
-                }, function(error) {
-                    alert("Не вдалося визначити ваше положення через GPS.");
-                });
-            } else {
-                alert("Геолокація не підтримується вашим пристроєм.");
-            }
-        }
-
-        // Надійний слухач події на кнопку замість inline onclick
-        document.getElementById('submitOrderBtn').addEventListener('click', function() {
-            let phone = document.getElementById('phone').value.trim();
-            let address_from = document.getElementById('address_from').value.trim();
-            let address_to = document.getElementById('address_to').value.trim();
-            let payment_method = document.getElementById('payment_method').value;
-
-            if (!phone || phone.length < 5) {
-                alert("Будь ласка, введіть номер телефону!");
-                return;
-            }
-            if (!address_from) {
-                alert("Будь ласка, вкажіть звідки забирати!");
-                return;
-            }
-            if (!address_to) {
-                alert("Будь ласка, вкажіть куди їдемо!");
-                return;
-            }
-
-            let orderData = {
-                phone: phone,
-                address_from: address_from,
-                address_to: address_to,
-                payment_method: payment_method
-            };
-
-            try {
-                tg.sendData(JSON.stringify(orderData));
-            } catch (err) {
-                alert("Помилка відправки: " + err.message);
-            }
-        });
-    </script>
-</body>
-</html>
+                <option value="Готів
