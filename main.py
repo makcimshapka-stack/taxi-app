@@ -2,7 +2,6 @@ import json
 import logging
 import asyncio
 import os
-import urllib.parse
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from aiogram import Bot, Dispatcher, types, F
@@ -43,7 +42,6 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# Ініціалізація FastAPI для веб-частини
 app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
@@ -53,30 +51,6 @@ async def serve_webapp():
             return f.read()
     except FileNotFoundError:
         return "<h1>Файл index.html не знайдено на сервері!</h1>"
-
-@dp.message(lambda message: message.text and message.text.startswith('/start order_'))
-async def process_direct_order(message: types.Message):
-    try:
-        encoded_text = message.text.replace('/start order_', '')
-        order_text_raw = urllib.parse.unquote(encoded_text)
-
-        order_text = f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n{order_text_raw}"
-
-        callback_data_str = f"accept_{message.from_user.id}_Готівка"
-
-        markup = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton(text="🚗 Взяти замовлення", callback_data=callback_data_str)]
-            ]
-        )
-
-        await message.answer("⏳ **Ваше замовлення прийнято! Шукаємо вільне авто...**", parse_mode="Markdown")
-        await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
-        logging.info("✅ Пряме замовлення успішно відправлено у чат водіїв!")
-        
-    except Exception as e:
-        logging.error(f"Помилка прямого замовлення: {e}")
-        await message.answer("❌ Сталася помилка при оформленні замовлення.")
 
 @dp.message(lambda message: message.text and message.text.startswith('/start'))
 async def send_welcome(message: types.Message):
@@ -97,11 +71,12 @@ async def send_welcome(message: types.Message):
         reply_markup=markup
     )
 
-# Старий хендлер для web_app_data (про всяк випадок)
+# Універсальний обробник для даних із WebApp
 @dp.message(F.web_app_data)
 async def handle_web_app_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
+        
         address_from = data.get('address_from', 'Не вказано')
         address_to = data.get('address_to', 'Не вказано')
         phone = data.get('phone', 'Не вказано')
@@ -118,6 +93,7 @@ async def handle_web_app_data(message: types.Message):
         )
 
         callback_data_str = f"accept_{message.from_user.id}_{payment_method}"
+
         markup = types.InlineKeyboardMarkup(
             inline_keyboard=[
                 [types.InlineKeyboardButton(text="🚗 Взяти замовлення", callback_data=callback_data_str)]
@@ -125,8 +101,11 @@ async def handle_web_app_data(message: types.Message):
         )
 
         await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
+        logging.info("✅ Замовлення успішно відправлено у чат водіїв через web_app_data!")
+
     except Exception as e:
         logging.error(f"Помилка обробки даних WebApp: {e}")
+        await message.answer("❌ Сталася помилка при оформленні замовлення.")
 
 @dp.callback_query(lambda c: c.data and c.data.startswith('accept_'))
 async def process_accept(callback: types.CallbackQuery):
