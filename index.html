@@ -89,9 +89,9 @@
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 13px;
+            padding: 14px;
             border-radius: 10px;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             text-align: center;
@@ -139,7 +139,7 @@
             </select>
         </div>
 
-        <button class="submit-btn" onclick="submitOrder()">Підтвердити замовлення</button>
+        <button class="submit-btn" id="submitOrderBtn">Підтвердити замовлення</button>
     </div>
 
     <!-- Leaflet JS -->
@@ -152,14 +152,6 @@
 
         let map = L.map('map').setView([49.1435, 34.2045], 14);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        // Виправляємо виклик тайлєрів на стандартний, щоб карти завжди вантажились без збоїв
-        map.remove();
-        map = L.map('map').setView([49.1435, 34.2045], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
@@ -227,13 +219,14 @@
             }
         }
 
-        function submitOrder() {
+        // Надійний слухач події на кнопку замість inline onclick
+        document.getElementById('submitOrderBtn').addEventListener('click', function() {
             let phone = document.getElementById('phone').value.trim();
             let address_from = document.getElementById('address_from').value.trim();
             let address_to = document.getElementById('address_to').value.trim();
             let payment_method = document.getElementById('payment_method').value;
 
-            if (!phone || phone.length < 9) {
+            if (!phone || phone.length < 5) {
                 alert("Будь ласка, введіть номер телефону!");
                 return;
             }
@@ -253,9 +246,12 @@
                 payment_method: payment_method
             };
 
-            // Використовуємо надійну відправку даних у бота без помилок зовнішніх посилань
-            tg.sendData(JSON.stringify(orderData));
-        }
+            try {
+                tg.sendData(JSON.stringify(orderData));
+            } catch (err) {
+                alert("Помилка відправки: " + err.message);
+            }
+        });
     </script>
 </body>
 </html>
