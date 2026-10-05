@@ -21,34 +21,34 @@
         }
         #map {
             width: 100%;
-            height: 42vh;
+            height: 45vh;
             flex-shrink: 0;
         }
         .form-container {
             flex-grow: 1;
             background: var(--tg-theme-bg-color, #fff);
-            padding: 12px 15px;
+            padding: 15px;
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
             box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 4px;
         }
         label {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             color: var(--tg-theme-hint-color, #666);
         }
         input, select {
             width: 100%;
-            padding: 9px 12px;
+            padding: 10px 12px;
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 14px;
@@ -67,9 +67,9 @@
             background-color: var(--tg-theme-button-color, #2ea6ff);
             color: var(--tg-theme-button-text-color, #fff);
             border: none;
-            padding: 9px 12px;
+            padding: 10px 14px;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             white-space: nowrap;
@@ -78,14 +78,14 @@
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 13px;
+            padding: 14px;
             border-radius: 10px;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             text-align: center;
             margin-top: auto;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
         }
         .submit-btn:active {
             background-color: #218838;
@@ -118,18 +118,12 @@
             </div>
         </div>
 
-        <div class="row">
-            <div class="input-group" style="flex: 1;">
-                <label>💳 Оплата</label>
-                <select id="payment_method">
-                    <option value="Готівка">Готівка</option>
-                    <option value="Картка">Картка</option>
-                </select>
-            </div>
-            <div class="input-group" style="flex: 1;">
-                <label>💰 Ціна (грн)</label>
-                <input type="number" id="price" value="100">
-            </div>
+        <div class="input-group">
+            <label>💳 Оплата</label>
+            <select id="payment_method">
+                <option value="Готівка">Готівка</option>
+                <option value="Картка">Картка</option>
+            </select>
         </div>
 
         <button class="submit-btn" onclick="submitOrder()">Підтвердити замовлення</button>
@@ -151,6 +145,7 @@
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
+        // Клік по карті чи перетягування оновлює поле "Куди" за замовчуванням
         marker.on('dragend', function(e) {
             let pos = marker.getLatLng();
             getAddress(pos.lat, pos.lng, 'address_to');
@@ -175,6 +170,7 @@
             }).catch(err => console.log(err));
         }
 
+        // Виправлено: тепер кнопка "Ар. Звідки" записує координати центру карти саме у поле address_from
         function setMarkerFrom() {
             let center = map.getCenter();
             marker.setLatLng(center);
@@ -192,24 +188,29 @@
             let address_from = document.getElementById('address_from').value.trim();
             let address_to = document.getElementById('address_to').value.trim();
             let payment_method = document.getElementById('payment_method').value;
-            let price = document.getElementById('price').value;
 
             if (!phone || phone.length < 9) {
                 alert("Будь ласка, введіть номер телефону!");
                 return;
             }
+            if (!address_from) {
+                alert("Будь ласка, вкажіть звідки забирати!");
+                return;
+            }
+            if (!address_to) {
+                alert("Будь ласка, вкажіть куди їдемо!");
+                return;
+            }
 
             let orderData = {
                 phone: phone,
-                address_from: address_from || "Центр",
-                address_to: address_to || "Центр",
-                payment_method: payment_method,
-                price: price,
-                price_desc: "(тариф Кобеляки)"
+                address_from: address_from,
+                address_to: address_to,
+                payment_method: payment_method
             };
 
+            // Передаємо дані у бота
             tg.sendData(JSON.stringify(orderData));
-            tg.close();
         }
     </script>
 </body>
