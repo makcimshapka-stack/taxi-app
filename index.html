@@ -204,16 +204,4 @@
                 return;
             }
             if (!address_to) {
-                alert("Будь ласка, вкажіть куди їдемо!");
-                return;
-            }
-
-            // Формуємо текст для відправки через бота напряму
-            let text = `ЗАМОВЛЕННЯ ТАКСІ:\nЗвідки: ${address_from}\nКуди: ${address_to}\nТелефон: ${phone}\nОплата: ${payment_method}`;
-            
-            // Використовуємо спеціальну команду бота для передачі тексту
-            window.location.href = `https://t.me/TaxikobelyakyBot?start=order_${encodeURIComponent(text)}`;
-        }
-    </script>
-</body>
-</html>
+                alert("
