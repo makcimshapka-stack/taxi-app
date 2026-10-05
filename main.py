@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from aiogram import Bot, Dispatcher, types
@@ -51,11 +52,10 @@ async def serve_webapp():
         with open("index.html", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "<h1>Файл index.html не знайдено на сервері! Завантажте його в корінь проєкту.</h1>"
+        return "<h1>Файл index.html не знайдено на сервері!</h1>"
 
 @dp.message(lambda message: message.text and message.text.startswith('/start'))
 async def send_welcome(message: types.Message):
-    # Ваше реальне посилання на Railway
     railway_url = "https://Taxi-app-production-df59.up.railway.app/"
     
     markup = types.InlineKeyboardMarkup(
@@ -160,7 +160,7 @@ async def process_accept(callback: types.CallbackQuery):
         await bot.send_message(client_id, client_reply, parse_mode="Markdown")
         await callback.answer("Ви успішно прийняли замовлення!")
 
-    except Exception as e:
+    exceptException as e:
         logging.error(f"Помилка обробки натискання: {e}")
         await callback.answer("❌ Помилка при прийнятті замовлення.", show_alert=True)
 
@@ -169,7 +169,10 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     print("Бот і веб-сервер успішно запускаються...")
     
-    config = uvicorn.Config(app, host="0.0.0.0", port=8080, log_level="info")
+    # Отримуємо порт від Railway або використовуємо 8080 за замовчуванням
+    port = int(os.environ.get("PORT", 8080))
+    
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(config)
     
     await asyncio.gather(
