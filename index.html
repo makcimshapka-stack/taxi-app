@@ -2,222 +2,224 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Замовлення Таксі - Кобеляки</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Замовлення таксі Кобеляки</title>
+    <!-- Підключаємо Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Leaflet CSS для карти -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body, html { width: 100%; height: 100%; background: #f5f5f5; overflow: hidden; }
-        #map { width: 100%; height: 45vh; }
-        .panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 55vh; background: #fff; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 15px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; overflow-y: auto; }
-        .input-group { margin-bottom: 8px; }
-        .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 2px; color: #777; }
-        .input-row { display: flex; gap: 6px; }
-        .input-group input { width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 14px; outline: none; }
-        .input-group input:focus { border-color: #2481cc; }
-        .action-btn { background: #e0e0e0; border: none; border-radius: 10px; padding: 0 12px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-        .action-btn.active { background: #2481cc; color: #fff; }
-        .geo-btn { width: 100%; background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px; padding: 7px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 8px; color: #333; text-align: center; }
-        .order-btn { width: 100%; padding: 12px; background-color: #2ea44f; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        .map-hint { font-size: 11px; color: #e67e22; text-align: center; margin-bottom: 4px; font-weight: bold; min-height: 15px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #222);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #map {
+            width: 100%;
+            height: 45vh;
+            flex-shrink: 0;
+        }
+        .form-container {
+            flex-grow: 1;
+            background: var(--tg-theme-bg-color, #fff);
+            padding: 15px;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--tg-theme-hint-color, #666);
+        }
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            background: var(--tg-theme-secondary-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+        }
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+        .row input {
+            flex-grow: 1;
+        }
+        button.action-btn {
+            background-color: var(--tg-theme-button-color, #2ea6ff);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .submit-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            margin-top: auto;
+            margin-bottom: 10px;
+        }
+        .submit-btn:active {
+            background-color: #218838;
+        }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
-    <div class="panel">
-        <div>
-            <div class="map-hint" id="mapHint">📍 Клікніть на карту або введіть адресу нижче</div>
-
-            <div class="input-group">
-                <label for="phone">📞 Ваш номер телефону</label>
-                <input type="tel" id="phone" placeholder="+380XXXXXXXXX">
-            </div>
-
-            <div class="input-group">
-                <label for="addressFrom">📍 Звідки забирати?</label>
-                <div class="input-row">
-                    <input type="text" id="addressFrom" placeholder="Вулиця, будинок або орієнтир">
-                    <button type="button" class="action-btn" id="setFromBtn" onclick="setMode('from')">Ар. Звідки</button>
-                </div>
-            </div>
-            
-            <div class="input-group">
-                <label for="addressTo">🏁 Куди їдемо?</label>
-                <div class="input-row">
-                    <input type="text" id="addressTo" placeholder="Пункт призначення">
-                    <button type="button" class="action-btn" id="setToBtn" onclick="setMode('to')">Ар. Куди</button>
-                </div>
-            </div>
-
-            <button type="button" class="geo-btn" onclick="useCurrentLocation()">📍 Визначити моє положення (GPS)</button>
+    <div class="form-container">
+        <div class="input-group">
+            <label>📞 Ваш номер телефону</label>
+            <input type="tel" id="phone" placeholder="+380XXXXXXXXX" value="380">
         </div>
 
-        <button class="order-btn" onclick="submitOrder()">Підтвердити замовлення</button>
+        <div class="input-group">
+            <label>📍 Звідки забирати?</label>
+            <div class="row">
+                <input type="text" id="address_from" placeholder="Вулиця, номер будинку">
+                <button class="action-btn" onclick="setMarkerFrom()">Ар. Звідки</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>🏁 Куди їдемо?</label>
+            <div class="row">
+                <input type="text" id="address_to" placeholder="Вулиця призначення">
+                <button class="action-btn" onclick="setMarkerTo()">Ар. Куди</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="input-group" style="flex: 1;">
+                <label>💳 Оплата</label>
+                <select id="payment_method">
+                    <option value="Готівка">Готівка</option>
+                    <option value="Картка">Картка</option>
+                </select>
+            </div>
+            <div class="input-group" style="flex: 1;">
+                <label>💰 Орієнтовна ціна (грн)</label>
+                <input type="number" id="price" value="100">
+            </div>
+        </div>
+
+        <button class="submit-btn" onclick="submitOrder()">Підтвердити замовлення</button>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand();
+        tg.expand(); // Розгортаємо WebApp на весь екран
 
-        let currentMode = 'from'; // 'from' або 'to'
-        let fromCoords = null;
-        let toCoords = null;
-
-        // Центр Кобеляк
-        const kobelyakyCoords = [49.1435, 34.2015];
-        const map = L.map('map').setView(kobelyakyCoords, 14);
+        // Ініціалізація карти Кобеляки
+        let map = L.map('map').setView([49.1435, 34.2045], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        let fromMarker = null;
-        let toMarker = null;
+        let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
-        // Завантаження збереженого номера телефону
-        window.onload = function() {
-            let savedPhone = localStorage.getItem("taxi_user_phone");
-            if (savedPhone) {
-                document.getElementById('phone').value = savedPhone;
-            }
-            updateModeUI();
-        };
-
-        function setMode(mode) {
-            currentMode = mode;
-            updateModeUI();
-        }
-
-        function updateModeUI() {
-            const hint = document.getElementById('mapHint');
-            const btnFrom = document.getElementById('setFromBtn');
-            const btnTo = document.getElementById('setToBtn');
-
-            if (currentMode === 'from') {
-                hint.innerText = "👉 Оберіть на мапі точку ВІДКРИТТЯ (Звідки)";
-                btnFrom.classList.add('active');
-                btnTo.classList.remove('active');
-            } else {
-                hint.innerText = "👉 Оберіть на мапі точку ПРИЗНАЧЕННЯ (Куди)";
-                btnTo.classList.add('active');
-                btnFrom.classList.remove('active');
-            }
-        }
-
-        // Клік по мапі для вибору точки
-        map.on('click', function(e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-
-            if (currentMode === 'from') {
-                fromCoords = {lat, lng};
-                if (fromMarker) map.removeLayer(fromMarker);
-                fromMarker = L.marker([lat, lng], {draggable: true}).addTo(map)
-                    .bindPopup("Звідки").openPopup();
-                
-                reverseGeocode(lat, lng, 'addressFrom');
-            } else {
-                toCoords = {lat, lng};
-                if (toMarker) map.removeLayer(toMarker);
-                toMarker = L.marker([lat, lng], {
-                    icon: L.icon({
-                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.4/images/marker-shadow.png',
-                        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-                    }),
-                    draggable: true
-                }).addTo(map).bindPopup("Куди").openPopup();
-                
-                reverseGeocode(lat, lng, 'addressTo');
-            }
+        // Оновлення адреси при пересуванні маркера (зворотне геокодування через Nominatim)
+        marker.on('dragend', function(e) {
+            let pos = marker.getLatLng();
+            getAddress(pos.lat, pos.lng, 'address_to');
         });
 
-        // Автоматичне визначення назви вулиці за координатами (Nominatim API)
-        function reverseGeocode(lat, lng, elementId) {
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+        function getAddress(lat, lon, elementId) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
                 headers: { 'Accept-Language': 'uk' }
             })
-            .then(res => res.json())
+            .then(response => response.json())
             .then(data => {
                 if (data && data.display_name) {
+                    // Скорочуємо адресу для зручності
                     let parts = data.display_name.split(',');
-                    let shortAddress = parts.slice(0, 3).join(',').trim();
-                    document.getElementById(elementId).value = shortAddress;
-                } else {
-                    document.getElementById(elementId).value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    let shortName = parts.slice(0, 3).join(',');
+                    document.getElementById(elementId).value = shortName;
                 }
-            })
-            .catch(() => {
-                document.getElementById(elementId).value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-            });
+            }).catch(err => console.log(err));
         }
 
-        // Визначення геопозиції користувача (GPS)
-        function useCurrentLocation() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    
-                    map.setView([lat, lng], 16);
-                    currentMode = 'from';
-                    
-                    fromCoords = {lat, lng};
-                    if (fromMarker) map.removeLayer(fromMarker);
-                    fromMarker = L.marker([lat, lng]).addTo(map).bindPopup("Я тут").openPopup();
-                    
-                    reverseGeocode(lat, lng, 'addressFrom');
-                }, function(error) {
-                    alert("Не вдалося отримати геолокацію. Увімкніть GPS на телефоні.");
-                }, {enableHighAccuracy: true});
-            } else {
-                alert("Ваш браузер не підтримує геолокацію.");
-            }
+        function setMarkerFrom() {
+            let val = document.getElementById('address_from').value;
+            // Можна додати пошук координат за назвою, поки просто беремо поточну точку карти
+            let center = map.getCenter();
+            marker.setLatLng(center);
+            getAddress(center.lat, center.lng, 'address_from');
         }
 
+        function setMarkerTo() {
+            let center = map.getCenter();
+            marker.setLatLng(center);
+            getAddress(center.lat, center.lng, 'address_to');
+        }
+
+        // Головна функція відправки замовлення в Telegram бот
         function submitOrder() {
-            const phone = document.getElementById('phone').value.trim();
-            const addressFrom = document.getElementById('addressFrom').value.trim();
-            const addressTo = document.getElementById('addressTo').value.trim();
+            let phone = document.getElementById('phone').value.trim();
+            let address_from = document.getElementById('address_from').value.trim();
+            let address_to = document.getElementById('address_to').value.trim();
+            let payment_method = document.getElementById('payment_method').value;
+            let price = document.getElementById('price').value;
 
+            // Перевірка заповнення полів
             if (!phone || phone.length < 9) {
-                alert("Будь ласка, введіть номер телефону!");
+                alert("Будь ласка, введіть коректний номер телефону!");
+                return;
+            }
+            if (!address_from) {
+                alert("Будь ласка, вкажіть звідки забирати!");
+                return;
+            }
+            if (!address_to) {
+                alert("Будь ласка, вкажіть куди їдемо!");
                 return;
             }
 
-            if (!addressFrom) {
-                alert("Вкажіть адресу відправлення (Звідки)!");
-                return;
-            }
-
-            if (!addressTo) {
-                alert("Вкажіть пункт призначення (Куди)!");
-                return;
-            }
-
-            localStorage.setItem("taxi_user_phone", phone);
-
-            // Формуємо дані разом із координатами для навігації водія
-            const orderData = {
+            // Формуємо об'єкт із даними
+            let orderData = {
                 phone: phone,
-                address_from: addressFrom,
-                address_to: addressTo,
-                lat: fromCoords ? fromCoords.lat : null,
-                lng: fromCoords ? fromCoords.lng : null
+                address_from: address_from,
+                address_to: address_to,
+                payment_method: payment_method,
+                price: price,
+                price_desc: "(тариф Кобеляки)"
             };
 
-            if (window.Telegram && window.Telegram.WebApp) {
-                tg.sendData(JSON.stringify(orderData));
-            } else {
-                alert("Помилка: відкривайте цей додаток через Telegram!");
-            }
+            // Передаємо дані назад у Telegram-бота
+            tg.sendData(JSON.stringify(orderData));
         }
     </script>
 </body>
