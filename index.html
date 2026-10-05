@@ -151,13 +151,11 @@
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
-        // Оновлення координат при перетягуванні маркера
         marker.on('dragend', function(e) {
             let pos = marker.getLatLng();
             getAddress(pos.lat, pos.lng, 'address_to');
         });
 
-        // Також робимо клік по карті зручним: клік пересуває маркер у те місце
         map.on('click', function(e) {
             marker.setLatLng(e.latlng);
             getAddress(e.latlng.lat, e.latlng.lng, 'address_to');
@@ -192,7 +190,7 @@
         function submitOrder() {
             let phone = document.getElementById('phone').value.trim();
             let address_from = document.getElementById('address_from').value.trim();
-            let address_to = document.getElementById('address_to'].value.trim() || "Центр, Кобеляки";
+            let address_to = document.getElementById('address_to').value.trim();
             let payment_method = document.getElementById('payment_method').value;
             let price = document.getElementById('price').value;
 
@@ -204,13 +202,12 @@
             let orderData = {
                 phone: phone,
                 address_from: address_from || "Центр",
-                address_to: address_to,
+                address_to: address_to || "Центр",
                 payment_method: payment_method,
                 price: price,
                 price_desc: "(тариф Кобеляки)"
             };
 
-            // Передаємо дані у бота і закриваємо WebApp
             tg.sendData(JSON.stringify(orderData));
             tg.close();
         }
