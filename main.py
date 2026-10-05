@@ -4,7 +4,7 @@ import asyncio
 import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, F
 
 API_TOKEN = '8895482400:AAF22IJsYMCOImngnkhXfjFml8X0Z5_sG4k'
 DRIVER_CHAT_ID = -5357703122
@@ -47,7 +47,6 @@ app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_webapp():
-    """Віддає ваш index.html напряму з сервера Railway"""
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             return f.read()
@@ -73,7 +72,8 @@ async def send_welcome(message: types.Message):
         reply_markup=markup
     )
 
-@dp.message(lambda message: message.web_app_data is not None)
+# Обробник даних, які надходять з WebApp (коли клієнт натискає "Підтвердити замовлення")
+@dp.message(F.web_app_data)
 async def handle_web_app_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
@@ -82,8 +82,6 @@ async def handle_web_app_data(message: types.Message):
         address_to = data.get('address_to', 'Не вказано')
         phone = data.get('phone', 'Не вказано')
         payment_method = data.get('payment_method', 'Готівка')
-        price = data.get('price', 100)
-        price_desc = data.get('price_desc', '')
 
         await message.answer("⏳ **Ваше замовлення прийнято! Шукаємо вільне авто...**", parse_mode="Markdown")
 
@@ -93,10 +91,9 @@ async def handle_web_app_data(message: types.Message):
             f"🏁 **Куди:** {address_to}\n"
             f"📞 **Телефон клієнта:** `{phone}`\n"
             f"💳 **Оплата:** {payment_method}\n"
-            f"💰 **Вартість:** {price} грн _{price_desc}_\n"
         )
 
-        callback_data_str = f"accept_{message.from_user.id}_{price}_{payment_method}"
+        callback_data_str = f"accept_{message.from_user.id}_{payment_method}"
 
         markup = types.InlineKeyboardMarkup(
             inline_keyboard=[
@@ -116,8 +113,7 @@ async def process_accept(callback: types.CallbackQuery):
     try:
         parts = callback.data.split('_')
         client_id = int(parts[1])
-        price = parts[2]
-        payment_method = parts[3]
+        payment_method = parts[2]
         
         first_name = callback.from_user.first_name or ""
         last_name = callback.from_user.last_name or ""
@@ -152,7 +148,7 @@ async def process_accept(callback: types.CallbackQuery):
         client_reply = (
             f"✅ **Ваше замовлення прийнято в роботу!**\n\n"
             f"🚗 **Водій:** {driver_display_name} ({car_info})\n"
-            f"💰 **Сума до сплати:** {price} грн ({payment_method})"
+            f"💰 **Спосіб оплати:** {payment_method}"
         )
         if payment_method == 'Картка':
             client_reply += f"\n\n💳 **Номер картки для оплати ({driver_display_name}):**\n`{card_num}`"
