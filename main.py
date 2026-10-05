@@ -1,12 +1,14 @@
 import json
 import logging
 import asyncio
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from aiogram import Bot, Dispatcher, types
 
 API_TOKEN = '8895482400:AAF22IJsYMCOImngnkhXfjFml8X0Z5_sG4k'
 DRIVER_CHAT_ID = -5357703122
 
-# Чіткий словник із варіантами імен у Telegram
+# Словник водіїв
 DRIVERS_INFO = {
     "Макс": {
         "card": "4874070013052004",
@@ -39,14 +41,29 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
+# Ініціалізація FastAPI для веб-частини
+app = FastAPI()
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_webapp():
+    """Віддає ваш index.html прямо з сервера Railway"""
+    try:
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "<h1>Файл index.html не знайдено на сервері! Завантажте його в корінь проєкту.</h1>"
+
 @dp.message(lambda message: message.text and message.text.startswith('/start'))
 async def send_welcome(message: types.Message):
+    # ПЕРЕД ЗАПУСКОМ: тут буде ваше посилання від Railway, поки що лишаємо загальне або згодом оновимо
+    railway_url = "https://your-app-name.up.railway.app/" 
+    
     markup = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
                     text="🚗 Замовити таксі (Кобеляки)",
-                    web_app=types.WebAppInfo(url="https://maksimshapka-stack.github.io/taxi-app/")
+                    web_app=types.WebAppInfo(url=railway_url)
                 )
             ]
         ]
@@ -105,7 +122,6 @@ async def process_accept(callback: types.CallbackQuery):
         first_name = callback.from_user.first_name or ""
         last_name = callback.from_user.last_name or ""
 
-        # Шукаємо відповідність у словнику
         driver_data = None
         driver_display_name = first_name
 
@@ -115,7 +131,6 @@ async def process_accept(callback: types.CallbackQuery):
                 driver_display_name = data["display"]
                 break
         
-        # Якщо водія не знайдено взагалі, беремо дефолтні значення
         if not driver_data:
             driver_data = {"card": "4149629378242937", "car": "Лада Гранта"}
             driver_display_name = first_name or "Водій"
@@ -129,7 +144,7 @@ async def process_accept(callback: types.CallbackQuery):
 
         updated_driver_text = (
             callback.message.text + 
-            f"\n\n✅ **Замовлення прийняв(lah): {driver_display_name}**\n"
+            f"\n\n✅ **Замовлення прийняв(ла): {driver_display_name}**\n"
             f"🚗 **Авто:** {car_info}"
         )
         await callback.message.edit_text(updated_driver_text, reply_markup=None, parse_mode="Markdown")
@@ -150,9 +165,17 @@ async def process_accept(callback: types.CallbackQuery):
         await callback.answer("❌ Помилка при прийнятті замовлення.", show_alert=True)
 
 async def main():
+    import uvicorn
     await bot.delete_webhook(drop_pending_updates=True)
-    print("Бот успішно запущено і готовий до роботи!")
-    await dp.start_polling(bot)
+    print("Бот і веб-сервер успішно запускаються...")
+    
+    config = uvicorn.Config(app, host="0.0.0.0", port=8080, log_level="info")
+    server = uvicorn.Server(config)
+    
+    await asyncio.gather(
+        dp.start_polling(bot),
+        server.serve()
+    )
 
 if __name__ == '__main__':
     asyncio.run(main())
