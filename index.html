@@ -139,9 +139,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Розгортаємо WebApp на весь екран
+        tg.expand();
 
-        // Ініціалізація карти Кобеляки
         let map = L.map('map').setView([49.1435, 34.2045], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -151,7 +150,6 @@
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
-        // Оновлення адреси при пересуванні маркера (зворотне геокодування через Nominatim)
         marker.on('dragend', function(e) {
             let pos = marker.getLatLng();
             getAddress(pos.lat, pos.lng, 'address_to');
@@ -164,7 +162,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data && data.display_name) {
-                    // Скорочуємо адресу для зручності
                     let parts = data.display_name.split(',');
                     let shortName = parts.slice(0, 3).join(',');
                     document.getElementById(elementId).value = shortName;
@@ -173,8 +170,6 @@
         }
 
         function setMarkerFrom() {
-            let val = document.getElementById('address_from').value;
-            // Можна додати пошук координат за назвою, поки просто беремо поточну точку карти
             let center = map.getCenter();
             marker.setLatLng(center);
             getAddress(center.lat, center.lng, 'address_from');
@@ -186,7 +181,6 @@
             getAddress(center.lat, center.lng, 'address_to');
         }
 
-        // Головна функція відправки замовлення в Telegram бот
         function submitOrder() {
             let phone = document.getElementById('phone').value.trim();
             let address_from = document.getElementById('address_from').value.trim();
@@ -194,21 +188,6 @@
             let payment_method = document.getElementById('payment_method').value;
             let price = document.getElementById('price').value;
 
-            // Перевірка заповнення полів
-            if (!phone || phone.length < 9) {
-                alert("Будь ласка, введіть коректний номер телефону!");
-                return;
-            }
-            if (!address_from) {
-                alert("Будь ласка, вкажіть звідки забирати!");
-                return;
-            }
-            if (!address_to) {
-                alert("Будь ласка, вкажіть куди їдемо!");
-                return;
-            }
-
-            // Формуємо об'єкт із даними
             let orderData = {
                 phone: phone,
                 address_from: address_from,
@@ -218,7 +197,6 @@
                 price_desc: "(тариф Кобеляки)"
             };
 
-            // Передаємо дані назад у Telegram-бота
             tg.sendData(JSON.stringify(orderData));
         }
     </script>
