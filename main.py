@@ -46,7 +46,7 @@ app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_webapp():
-    """Віддає ваш index.html прямо з сервера Railway"""
+    """Віддає ваш index.html напряму з сервера Railway"""
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             return f.read()
@@ -55,8 +55,8 @@ async def serve_webapp():
 
 @dp.message(lambda message: message.text and message.text.startswith('/start'))
 async def send_welcome(message: types.Message):
-    # ПЕРЕД ЗАПУСКОМ: тут буде ваше посилання від Railway, поки що лишаємо загальне або згодом оновимо
-    railway_url = "https://your-app-name.up.railway.app/" 
+    # Ваше реальне посилання на Railway
+    railway_url = "https://Taxi-app-production-df59.up.railway.app/"
     
     markup = types.InlineKeyboardMarkup(
         inline_keyboard=[
