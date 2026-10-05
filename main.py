@@ -160,7 +160,7 @@ async def process_accept(callback: types.CallbackQuery):
         await bot.send_message(client_id, client_reply, parse_mode="Markdown")
         await callback.answer("Ви успішно прийняли замовлення!")
 
-    exceptException as e:
+    except Exception as e:
         logging.error(f"Помилка обробки натискання: {e}")
         await callback.answer("❌ Помилка при прийнятті замовлення.", show_alert=True)
 
@@ -169,7 +169,6 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     print("Бот і веб-сервер успішно запускаються...")
     
-    # Отримуємо порт від Railway або використовуємо 8080 за замовчуванням
     port = int(os.environ.get("PORT", 8080))
     
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
