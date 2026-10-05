@@ -193,7 +193,7 @@
             let phone = document.getElementById('phone').value.trim();
             let address_from = document.getElementById('address_from').value.trim();
             let address_to = document.getElementById('address_to').value.trim();
-            let payment_method = document.getElementById('payment_method').value;
+            let payment_method = document.getElementById('payment_method'].value;
 
             if (!phone || phone.length < 9) {
                 alert("Будь ласка, введіть номер телефону!");
@@ -204,4 +204,17 @@
                 return;
             }
             if (!address_to) {
-                alert("
+                alert("Будь ласка, вкажіть куди їдемо!");
+                return;
+            }
+
+            // Формуємо красивий текст замовлення для відправки боту
+            let orderText = `📍 Звідки: ${address_from}%0A🏁 Куди: ${address_to}%0A📞 Телефон: ${phone}%0A💳 Оплата: ${payment_method}`;
+
+            // Відкриваємо посилання через нативний метод Telegram WebApp, що гарантовано передає дані боту
+            tg.openTelegramLink(`https://t.me/TaxikobelyakyBot?start=order_${orderText}`);
+            tg.close();
+        }
+    </script>
+</body>
+</html>
