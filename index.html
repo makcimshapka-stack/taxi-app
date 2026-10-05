@@ -135,6 +135,9 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
+        // Зберігаємо стан: яке поле зараз оновлюємо з карти ('from' або 'to')
+        let activeField = 'to';
+
         // Ініціалізація карти Кобеляки
         let map = L.map('map').setView([49.1435, 34.2045], 14);
 
@@ -145,16 +148,21 @@
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
-        // Клік по карті чи перетягування оновлює поле "Куди" за замовчуванням
+        // Коли рухають маркер або клікають по карті — оновлюємо активне поле
         marker.on('dragend', function(e) {
             let pos = marker.getLatLng();
-            getAddress(pos.lat, pos.lng, 'address_to');
+            updateAddress(pos.lat, pos.lng);
         });
 
         map.on('click', function(e) {
             marker.setLatLng(e.latlng);
-            getAddress(e.latlng.lat, e.latlng.lng, 'address_to');
+            updateAddress(e.latlng.lat, e.latlng.lng);
         });
+
+        function updateAddress(lat, lon) {
+            let elementId = (activeField === 'from') ? 'address_from' : 'address_to';
+            getAddress(lat, lon, elementId);
+        }
 
         function getAddress(lat, lon, elementId) {
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
@@ -170,14 +178,17 @@
             }).catch(err => console.log(err));
         }
 
-        // Виправлено: тепер кнопка "Ар. Звідки" записує координати центру карти саме у поле address_from
+        // Кнопка встановлює фокус на "Звідки" і ставить туди центр карти
         function setMarkerFrom() {
+            activeField = 'from';
             let center = map.getCenter();
             marker.setLatLng(center);
             getAddress(center.lat, center.lng, 'address_from');
         }
 
+        // Кнопка встановлює фокус на "Куди" і ставить туди центр карти
         function setMarkerTo() {
+            activeField = 'to';
             let center = map.getCenter();
             marker.setLatLng(center);
             getAddress(center.lat, center.lng, 'address_to');
@@ -209,8 +220,15 @@
                 payment_method: payment_method
             };
 
-            // Передаємо дані у бота
-            tg.sendData(JSON.stringify(orderData));
+            // Надсилаємо дані у бота
+            try {
+                tg.sendData(JSON.stringify(orderData));
+            } catch (e) {
+                console.error(e);
+            }
+            
+            // Закриваємо вікно міні-додатка
+            tg.close();
         }
     </script>
 </body>
