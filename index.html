@@ -21,34 +21,34 @@
         }
         #map {
             width: 100%;
-            height: 45vh;
+            height: 40vh;
             flex-shrink: 0;
         }
         .form-container {
             flex-grow: 1;
             background: var(--tg-theme-bg-color, #fff);
-            padding: 15px;
+            padding: 12px 15px;
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
             box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
         }
         label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--tg-theme-hint-color, #666);
         }
         input, select {
             width: 100%;
-            padding: 10px 12px;
+            padding: 9px 12px;
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 14px;
@@ -67,25 +67,36 @@
             background-color: var(--tg-theme-button-color, #2ea6ff);
             color: var(--tg-theme-button-text-color, #fff);
             border: none;
-            padding: 10px 14px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .gps-btn {
+            background-color: #e0e0e0;
+            color: #333;
+            border: none;
+            padding: 10px;
             border-radius: 8px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            white-space: nowrap;
+            text-align: center;
         }
         .submit-btn {
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 14px;
+            padding: 13px;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
             text-align: center;
             margin-top: auto;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .submit-btn:active {
             background-color: #218838;
@@ -118,6 +129,8 @@
             </div>
         </div>
 
+        <button class="gps-btn" onclick="locateUser()">📍 Визначити моє положення (GPS)</button>
+
         <div class="input-group">
             <label>💳 Оплата</label>
             <select id="payment_method">
@@ -139,6 +152,14 @@
 
         let map = L.map('map').setView([49.1435, 34.2045], 14);
 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/*{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Виправляємо виклик тайлєрів на стандартний, щоб карти завжди вантажились без збоїв
+        map.remove();
+        map = L.map('map').setView([49.1435, 34.2045], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
@@ -189,6 +210,23 @@
             getAddress(center.lat, center.lng, 'address_to');
         }
 
+        function locateUser() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    let lat = position.coords.latitude;
+                    let lon = position.coords.longitude;
+                    map.setView([lat, lon], 16);
+                    marker.setLatLng([lat, lon]);
+                    activeField = 'from';
+                    getAddress(lat, lon, 'address_from');
+                }, function(error) {
+                    alert("Не вдалося визначити ваше положення через GPS.");
+                });
+            } else {
+                alert("Геолокація не підтримується вашим пристроєм.");
+            }
+        }
+
         function submitOrder() {
             let phone = document.getElementById('phone').value.trim();
             let address_from = document.getElementById('address_from').value.trim();
@@ -208,10 +246,15 @@
                 return;
             }
 
-            let orderText = `📍 Звідки: ${address_from}%0A🏁 Куди: ${address_to}%0A📞 Телефон: ${phone}%0A💳 Оплата: ${payment_method}`;
+            let orderData = {
+                phone: phone,
+                address_from: address_from,
+                address_to: address_to,
+                payment_method: payment_method
+            };
 
-            tg.openTelegramLink(`https://t.me/TaxikobelyakyBot?start=order_${orderText}`);
-            tg.close();
+            // Використовуємо надійну відправку даних у бота без помилок зовнішніх посилань
+            tg.sendData(JSON.stringify(orderData));
         }
     </script>
 </body>
