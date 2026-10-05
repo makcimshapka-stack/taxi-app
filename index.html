@@ -135,10 +135,8 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Зберігаємо стан: яке поле зараз оновлюємо з карти ('from' або 'to')
         let activeField = 'to';
 
-        // Ініціалізація карти Кобеляки
         let map = L.map('map').setView([49.1435, 34.2045], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -148,7 +146,6 @@
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
-        // Коли рухають маркер або клікають по карті — оновлюємо активне поле
         marker.on('dragend', function(e) {
             let pos = marker.getLatLng();
             updateAddress(pos.lat, pos.lng);
@@ -178,7 +175,6 @@
             }).catch(err => console.log(err));
         }
 
-        // Кнопка встановлює фокус на "Звідки" і ставить туди центр карти
         function setMarkerFrom() {
             activeField = 'from';
             let center = map.getCenter();
@@ -186,7 +182,6 @@
             getAddress(center.lat, center.lng, 'address_from');
         }
 
-        // Кнопка встановлює фокус на "Куди" і ставить туди центр карти
         function setMarkerTo() {
             activeField = 'to';
             let center = map.getCenter();
@@ -213,22 +208,11 @@
                 return;
             }
 
-            let orderData = {
-                phone: phone,
-                address_from: address_from,
-                address_to: address_to,
-                payment_method: payment_method
-            };
-
-            // Надсилаємо дані у бота
-            try {
-                tg.sendData(JSON.stringify(orderData));
-            } catch (e) {
-                console.error(e);
-            }
+            // Формуємо текст для відправки через бота напряму
+            let text = `ЗАМОВЛЕННЯ ТАКСІ:\nЗвідки: ${address_from}\nКуди: ${address_to}\nТелефон: ${phone}\nОплата: ${payment_method}`;
             
-            // Закриваємо вікно міні-додатка
-            tg.close();
+            // Використовуємо спеціальну команду бота для передачі тексту
+            window.location.href = `https://t.me/TaxikobelyakyBot?start=order_${encodeURIComponent(text)}`;
         }
     </script>
 </body>
