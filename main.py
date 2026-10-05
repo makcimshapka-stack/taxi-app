@@ -4,6 +4,7 @@ import asyncio
 import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 
 API_TOKEN = '8895482400:AAF22IJsYMCOImngnkhXfjFml8X0Z5_sG4k'
@@ -44,6 +45,13 @@ dp = Dispatcher()
 
 app = FastAPI()
 
+class OrderSchema(BaseModel):
+    user_id: int
+    phone: str
+    address_from: str
+    address_to: str
+    payment_method: str
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_webapp():
     try:
@@ -51,6 +59,32 @@ async def serve_webapp():
             return f.read()
     except FileNotFoundError:
         return "<h1>Файл index.html не знайдено на сервері!</h1>"
+
+@app.post("/order")
+async def create_order(order: OrderSchema):
+    try:
+        order_text = (
+            f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
+            f"📍 **Звідки:** {order.address_from}\n"
+            f"🏁 **Куди:** {order.address_to}\n"
+            f"📞 **Телефон клієнта:** `{order.phone}`\n"
+            f"💳 **Оплата:** {order.payment_method}\n"
+        )
+
+        callback_data_str = f"accept_{order.user_id}_{order.payment_method}"
+
+        markup = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="🚗 Взяти замовлення", callback_data=callback_data_str)]
+            ]
+        )
+
+        await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
+        logging.info("✅ Замовлення успішно відправлено у чат водіїв через API!")
+        return {"status": "ok"}
+    except Exception as e:
+        logging.error(f"Помилка створення замовлення через API: {e}")
+        return {"status": "error", "message": str(e)}
 
 @dp.message(lambda message: message.text and message.text.startswith('/start'))
 async def send_welcome(message: types.Message):
@@ -70,42 +104,6 @@ async def send_welcome(message: types.Message):
         "👋 Вітаємо у службі таксі Кобеляки!\nНатисніть кнопку нижче, щоб відкрити карту та оформити замовлення:",
         reply_markup=markup
     )
-
-# Універсальний обробник для даних із WebApp
-@dp.message(F.web_app_data)
-async def handle_web_app_data(message: types.Message):
-    try:
-        data = json.loads(message.web_app_data.data)
-        
-        address_from = data.get('address_from', 'Не вказано')
-        address_to = data.get('address_to', 'Не вказано')
-        phone = data.get('phone', 'Не вказано')
-        payment_method = data.get('payment_method', 'Готівка')
-
-        await message.answer("⏳ **Ваше замовлення прийнято! Шукаємо вільне авто...**", parse_mode="Markdown")
-
-        order_text = (
-            f"🚨 **НОВЕ ЗАМОВЛЕННЯ ТАКСІ!** 🚨\n\n"
-            f"📍 **Звідки:** {address_from}\n"
-            f"🏁 **Куди:** {address_to}\n"
-            f"📞 **Телефон клієнта:** `{phone}`\n"
-            f"💳 **Оплата:** {payment_method}\n"
-        )
-
-        callback_data_str = f"accept_{message.from_user.id}_{payment_method}"
-
-        markup = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton(text="🚗 Взяти замовлення", callback_data=callback_data_str)]
-            ]
-        )
-
-        await bot.send_message(DRIVER_CHAT_ID, order_text, reply_markup=markup, parse_mode="Markdown")
-        logging.info("✅ Замовлення успішно відправлено у чат водіїв через web_app_data!")
-
-    except Exception as e:
-        logging.error(f"Помилка обробки даних WebApp: {e}")
-        await message.answer("❌ Сталася помилка при оформленні замовлення.")
 
 @dp.callback_query(lambda c: c.data and c.data.startswith('accept_'))
 async def process_accept(callback: types.CallbackQuery):
@@ -152,7 +150,9 @@ async def process_accept(callback: types.CallbackQuery):
         if payment_method == 'Картка':
             client_reply += f"\n\n💳 **Номер картки для оплати ({driver_display_name}):**\n`{card_num}`"
 
-        await bot.send_message(client_id, client_reply, parse_mode="Markdown")
+        if client_id != 0:
+            await bot.send_message(client_id, client_reply, parse_mode="Markdown")
+            
         await callback.answer("Ви успішно прийняли замовлення!")
 
     except Exception as e:
