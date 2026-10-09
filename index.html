@@ -24,6 +24,7 @@
             width: 100%;
             height: 220px;
             background-color: #ddd;
+            z-index: 1;
         }
 
         .form-container {
@@ -166,8 +167,10 @@
 
         let activeField = 'to';
 
-        // Ініціалізація карти (центр - Кобеляки)
-        let map = L.map('map').setView([49.1435, 34.2045], 14);
+        // Ініціалізація карти (центр - Кобеляки) з підтримкою тач-жестів
+        let map = L.map('map', {
+            tap: true
+        }).setView([49.1435, 34.2045], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -175,6 +178,23 @@
         }).addTo(map);
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
+
+        // Клік по карті для встановлення мітки
+        map.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            updateAddress(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Оновлення адреси після перетягування маркера
+        marker.on('dragend', function(e) {
+            let pos = marker.getLatLng();
+            updateAddress(pos.lat, pos.lng);
+        });
+
+        function updateAddress(lat, lon) {
+            let elementId = (activeField === 'from') ? 'address_from' : 'address_to';
+            getAddress(lat, lon, elementId);
+        }
 
         // Функція для отримання адреси за координатами (обратне геокодування)
         function getAddress(lat, lon, elementId) {
