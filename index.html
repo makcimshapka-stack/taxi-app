@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Замовлення таксі Кобеляки</title>
     
-    <!-- Підключаємо Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Leaflet CSS для карти -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
@@ -25,6 +22,7 @@
             height: 220px;
             background-color: #ddd;
             z-index: 1;
+            touch-action: none; /* Забороняємо стандартний скрол сторінки під час торкання карти */
         }
 
         .form-container {
@@ -118,12 +116,9 @@
 </head>
 <body>
 
-    <!-- Блок карти -->
     <div id="map"></div>
 
-    <!-- Форма замовлення -->
     <div class="form-container">
-        
         <div class="input-group">
             <label>📞 Ваш номер телефону</label>
             <input type="tel" id="phone" value="380">
@@ -158,7 +153,6 @@
         <button class="submit-btn" id="submitOrderBtn">Підтвердити замовлення</button>
     </div>
 
-    <!-- Leaflet JS для карти -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
@@ -167,9 +161,9 @@
 
         let activeField = 'to';
 
-        // Ініціалізація карти (центр - Кобеляки) з підтримкою тач-жестів
         let map = L.map('map', {
-            tap: true
+            tap: false,
+            zoomControl: true
         }).setView([49.1435, 34.2045], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -179,13 +173,21 @@
 
         let marker = L.marker([49.1435, 34.2045], {draggable: true}).addTo(map);
 
-        // Клік по карті для встановлення мітки
+        // Надійний перехоплювач кліків та тачів для мобільних пристроїв
         map.on('click', function(e) {
             marker.setLatLng(e.latlng);
             updateAddress(e.latlng.lat, e.latlng.lng);
         });
 
-        // Оновлення адреси після перетягування маркера
+        // Додатковий слухач подій контейнера для мобільних браузерів
+        document.getElementById('map').addEventListener('touchend', function(e) {
+            setTimeout(() => {
+                let center = map.getCenter();
+                marker.setLatLng(center);
+                updateAddress(center.lat, center.lng);
+            }, 200);
+        });
+
         marker.on('dragend', function(e) {
             let pos = marker.getLatLng();
             updateAddress(pos.lat, pos.lng);
@@ -196,7 +198,6 @@
             getAddress(lat, lon, elementId);
         }
 
-        // Функція для отримання адреси за координатами (обратне геокодування)
         function getAddress(lat, lon, elementId) {
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`, {
                 headers: { 'Accept-Language': 'uk' }
@@ -243,7 +244,6 @@
             }
         }
 
-        // Кнопка відправки замовлення
         document.getElementById('submitOrderBtn').onclick = function() {
             let phone = document.getElementById('phone').value.trim();
             let address_from = document.getElementById('address_from').value.trim();
