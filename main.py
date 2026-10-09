@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types
 
-API_TOKEN = '8895482400:AAF22IJsYMCOImngnkhXfjFml8X0Z5_sG4k'
+API_TOKEN = '8895482400:AAEFlT8SiKQO5w7LLroidZfO8nQ9jEa11O8'
 DRIVER_CHAT_ID = -5357703122
 
 DRIVERS_INFO = {
